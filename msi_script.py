@@ -218,6 +218,11 @@ def count_reads(runfile_loc, locus, run_quality_threshold = 0.1, flank_length = 
 		return accepted_runs
 
 def avg_value(lst):
+	'''
+	Brief: calculates the average value from a list
+	Args: lst
+	Return: float
+	'''
 	if len(lst) == 0:
                 return 'n/a'
 	sum = 0
@@ -310,6 +315,11 @@ def report(bams, annotations, mismatch = 3, length = 7):
 			f.write(str(status_marker) + '\t' + msi_status + '\t' + known_status + '\n')
 
 def bw_plot(bams, msi_loci):
+	'''
+	Brief: Print a candlestick plot of the number of accepted reads at each locus
+	Args: lst, dict
+	Return: none
+	'''
 	data = []
 	label = []
 	for locus in msi_loci:
@@ -325,6 +335,11 @@ def bw_plot(bams, msi_loci):
 	plt.savefig('/home/upload/msi_project/depth_plot.png')
 
 def get_msi_annotations():
+	'''
+	Brief: Generate a dict containing all loci from txt file with their msi status
+	Args: none
+	Return: dict
+	'''
 	msi_annotations = {}
 	annotations_file = '/home/upload/msi_project/UCEC_annotations.txt'
 	with open (annotations_file, 'r') as f:
@@ -353,6 +368,11 @@ def get_msi_annotations():
 	return msi_annotations
 
 def status_plot(bams):
+	'''
+	Brief: Generate histograms showing average length of MS region depending on MSI status
+	Args: lst
+	Return: none 
+	'''
 	for locus in msi_loci:
 		msi_avgs = []
 		mss_avgs = []
