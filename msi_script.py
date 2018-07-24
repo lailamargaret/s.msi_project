@@ -326,7 +326,7 @@ def bw_plot(bams, msi_loci):
 		temp = []
 		label.append(locus)
 		for bam in bams:
-			num_reads = len(count_reads(bam, locus))
+			runs, favg, bavg, num_reads = count_reads(bam, locus, return_mms = True)
 			temp.append(num_reads)
 		data.append(temp)
 	plt.boxplot(data, labels = label)
@@ -403,14 +403,12 @@ def status_plot(bams):
 msi_loci = get_msi_loci('/home/upload/msi_project/msi_loci_edited.txt')
 
 #store bamfiles in a list
-directory = '/home/upload/msi_project/tcga_bam/tumor_bams'
+directory = '/home/upload/msi_project/tcga_bam/tumor_bams/subset'
 bamfiles = scan_files(directory)
-bamfiles = bamfiles[:1000]
 
 annotations = get_msi_annotations()
 
-status_plot(bamfiles)
-
+bw_plot(bamfiles, msi_loci)
 '''
 
 for bam in bamfiles:
