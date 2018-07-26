@@ -150,10 +150,10 @@ def count_reads(runfile_loc, locus, run_quality_threshold = 0.1, flank_length = 
 	                        flag += 1
 	        if (len(read) == 0):
 	                pass
-	        elif (float(flag) / len(read) > run_quality_threshold) :
-       		        rejected_runs.append(read)
+	        elif (float(flag) / len(read) < run_quality_threshold) :
+       		        accepted_runs.append(read)
         	else:
-        	        accepted_runs.append(read)
+        	        rejected_runs.append(read)
 	
 	runfile.close
 	
@@ -173,10 +173,9 @@ def count_reads(runfile_loc, locus, run_quality_threshold = 0.1, flank_length = 
 			print 'rejected reads:'
 			for read in rejected_runs:
 		                print read
-		if show_reads:
-			print 'accepted reads: '
-			for read in accepted_runs:
-				print read
+		print 'accepted reads: '
+		for read in accepted_runs:
+			print read
 	temp = runfile_loc.replace('.bam', '')
         temp = temp.split('/')
         bam_name = temp[-1]
@@ -266,7 +265,7 @@ def print_mm_depth(bams, mismatch = 3, length = 7):
 		for bam in bams:
 			f.write(bam.split('/')[-1].replace('.bam', '') + '\t')
 			for locus in msi_loci:
-				accepted_reads, f1_mm, f2_mm, num_reads = count_reads(bam, locus, length, mismatch, return_mms = True)
+				accepted_reads, f1_mm, f2_mm, num_reads = count_reads(bam, locus, flank_length = length, flank_mismatch = mismatch, return_mms = True)
 				if num_reads == 0:
 					percent_accepted = "no coverage"
 				else:
@@ -276,35 +275,35 @@ def print_mm_depth(bams, mismatch = 3, length = 7):
 
 
 
-def report(bams, annotations, mismatch = 3, length = 7):
+def report_num_lengths(bams, annotations, mismatch = 3, length = 7):
 	'''
-	Brief: Reports to file the MSI status of a patient
+	Brief: Reports to file the MSI status of a patient to compare with the known status, determining MSI status
+		based on number of different lengths
 	Args: list, int, int
 	Returns: none
 	'''
-	infile = '/home/upload/msi_project/msi_loci_edited.txt'
-	msi_loci = get_msi_loci(infile)
-
-	outfile = '/home/upload/msi_project/subset_statuses.txt'
+	outfile = '/home/upload/msi_project/subset_statuses_length.txt'
 		
 	with open (outfile, 'w') as f:
 		f.write('#mismatch: %s, flank length: %s\n' % (str(mismatch), str(length)))
-		f.write('BAM\tCOUNT\tSTATUS\tKNOWN STATUS\n')
+		#f.write('BAM\tNUM DIF ELEMS\tSTATUS\tKNOWN STATUS\tAGREE?\n')
+		f.write('locus\t')
+		for locus in msi_loci:
+			f.write(locus + '\t')
+		f.write('\n')
 		for bam in bams:
 			status_marker = 0
 			bam_name = bam.split('/')[-1].replace('A.bam', '')
 			f.write(bam_name + '\t')
 			for locus in msi_loci:
-				accepted_reads = (count_reads(bam, locus, length, mismatch))
-				average = avg_length(accepted_reads)
-				length = int(msi_loci[locus][2]) - int(msi_loci[locus][1]) + 1
-				if average == 'Insufficient reads' or len(accepted_reads) < 25:
-					pass
-				elif average > length:
-					status_marker += 1
+				accepted_reads = (count_reads(bam, locus, flank_length = length, flank_mismatch = mismatch))
+				#length = int(msi_loci[locus][2]) - int(msi_loci[locus][1]) + 1
+				if len(accepted_reads) < 25:
+					f.write('insufficent reads\t')
+					continue
 				else:
-					status_marker -= 1
-				#f.write(str(length) + '\t' + str(average) + '\t')
+					f.write(str(len(set(accepted_reads))) + '\t')					
+					status_marker += 1
 			msi_status = 'MSS'
 			if status_marker > 0:
 				msi_status = 'MSI'
@@ -312,7 +311,106 @@ def report(bams, annotations, mismatch = 3, length = 7):
 				known_status = annotations[bam_name]
 			else:
 				known_status = 'Not reported'
-			f.write(str(status_marker) + '\t' + msi_status + '\t' + known_status + '\n')
+			agree = False
+			if msi_status == known_status:
+				agree == True
+			f.write(msi_status + '\t' + known_status + '\t' + str(agree) + '\n')
+
+
+def report_dist_mode(bams, annotations, mismatch = 3, length = 7):
+        '''
+        Brief: Reports to file the MSI status of a patient to compare with the known status, determining MSI status
+                based on absolute distance from the mode
+        Args: list, int, int
+        Returns: none
+        outfile = '/home/upload/msi_project/subset_statuses_mode.txt'
+	
+	all_reads = []
+	modes = []
+
+	#Create 2D array of accepted read by locus and bam file
+	for bam in bams:
+		bam_reads = []
+		for locus in msi_loci:
+			accepted_reads = count_reads(bam, locus, flank_length = length, flank_mismatch = mismatch)
+			bam_reads.append(accepted_reads)
+		all_reads.append(bam_reads)	
+	
+	#Generate a list of the mode length for each locus
+	for i in range(len(msi_loci)):
+		for j in range(len(all_reads)):
+			locus = []
+			locus.extend(all_reads[j][i])
+		mode = mode_length(locus)
+		modes.append(mode)
+	
+	#find average distance from the mode for each bam each locus, average for all loci per bam, correlate with annotations
+        with open (outfile, 'w') as f:
+                f.write('BAM\n'))
+        	for i in range(len(all_reads): #iterate over all bam files
+                        bam_name = bam.split('/')[-1].replace('A.bam', '')
+                        f.write(bam_name + '\t')
+                        for j in range(len(modes): #iterate over all loci
+				if len(all_reads[i][j]) == 0 or modes[j] == 'error':
+					avg_distance = 'n/a'
+				total_distance = 0
+				mode = modes[j]
+				for read in all_reads[i][j]:
+					total_distance += abs(mode - len(read))
+				avg_distance = float(total_distance) / len(all_reads[i][j]
+				f.write(avg_distance + '\t')		               
+                            
+                                  msi_status = 'MSI'
+                   if bam_name in annotations:
+                           known_status = annotations[bam_name]
+                   else:
+                           known_status = 'Not reported'
+                                          if msi_status == known_status:
+                                agree == True
+                        f.write(str(status_marker) + '\t' + msi_status + '\t' + known_status + '\t' + str(agree) + '\n')
+			'''
+def mode_length(in_list):
+	'''
+	Brief: returns the mode length of elements in the input list. If there is no mode, returns 'error', if there are multiple modes, returns the mode closest to the arithmetic average. If all modes have the same distance to arithmetic mean, returns the smallest mode
+	Args: list
+	Return: string (if no mode), int (if there is a mode)
+	'''
+	lengths = []
+	dict_counts = {}
+	list_counts = []
+	if len(in_list) == 0:
+		return 'error'	
+	for i in range(len(in_list)): 
+		lengths.append(len(in_list[i]))
+
+	for i in lengths:
+		counti = lengths.count(i)
+		list_counts.append(counti)
+		dict_counts[i] = counti
+	maxcount = max(list_counts)
+	if maxcount == 1: #there is no mode
+		return 'error'
+	else:
+		modelist = []
+		for key, item in dict_counts.iteritems():
+			if item == maxcount:
+				modelist.append(str(key))
+		if len(modelist) == 1: #there is exactly 1 mode
+			return modelist[0]
+		else: #more than 1 mode, return the one closest to the arithmetic mean
+			average = avg_length(in_list)
+			distances = []
+			for i in modelist:
+				distances.append(abs(float(i) - average))
+			min_index = 0
+			current_min = distances[0]
+			for i in range(len(distances)):
+				if distances[i] < current_min:
+					min_index = i
+					current_min = distances[i]
+
+			return modelist[min_index]
+			
 
 def bw_plot(bams, msi_loci):
 	'''
@@ -402,13 +500,19 @@ def status_plot(bams):
 # ----------- Main --------------
 msi_loci = get_msi_loci('/home/upload/msi_project/msi_loci_edited.txt')
 
+
 #store bamfiles in a list
-directory = '/home/upload/msi_project/tcga_bam/tumor_bams/subset'
+directory = '/home/upload/msi_project/tcga_bam/tumor_bams/annotated/subset'
 bamfiles = scan_files(directory)
+bamfiles = bamfiles[:3]
+#@annotations = get_msi_annotations()
+ 
+for bam in bamfiles:
+	count_reads(bam, 'MSI-11', show_reads = True, print_full = True)
 
-annotations = get_msi_annotations()
+#report_dist_mode(bamfiles, annotations)
 
-bw_plot(bamfiles, msi_loci)
+#report_dist_mode(bamfiles, annotations)
 '''
 
 for bam in bamfiles:
