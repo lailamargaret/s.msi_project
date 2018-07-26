@@ -73,7 +73,7 @@ def get_msi_loci(infile):
                 	msi_loci[fields[0]] = [fields[1], fields[2], fields[3]]
 	return msi_loci
 
-def count_reads(runfile_loc, locus, run_quality_threshold = 0.1, flank_length = 7,  flank_mismatch = 3, print_full = False, plot = False, show_reads = False, return_mms = False):
+def count_reads(runfile_loc, locus, run_quality_threshold = 0.1, flank_length = 7,  flank_mismatch = 2, print_full = False, plot = False, show_reads = False, return_mms = False):
 	"""
 	Brief: Uses hg38 ref to choose locus flanking regions of size flank_length, looks for matching regions up to flank_mismatch edit distance
 		Filters polynucleotide runs that are more than run_quality_threshold different from reference run base
@@ -181,7 +181,7 @@ def count_reads(runfile_loc, locus, run_quality_threshold = 0.1, flank_length = 
         bam_name = temp[-1]
 
 	while plot:	
-		saveloc = runfile_loc.replace('.bam', '.%s.graph.png' % locus).replace('/bam', '/graphs')
+		saveloc = runfile_loc.replace('.bam', '.%s.graph.png' % locus).replace('/bam', '/length_distribution_graphs')
 		title = bam_name + ' - ' + locus		
 		
 		if len(accepted_runs) < 10:
@@ -243,16 +243,13 @@ def avg_length(lst):
 	return float(sum)/len(lst)
 
 
-def print_mm_depth(bams, mismatch = 3, length = 7):
+def print_mm_depth(bams, mismatch = 2, length = 7):
 	'''
 	Brief: used for optimizing flank length and mismatch parameters, prints edit distance and read depth to a file indicated below
 	Args: list, int, int
 	Returns: none
 	'''
-	infile = '/home/upload/msi_project/msi_loci_edited.txt'
-	msi_loci = get_msi_loci(infile)	
-	
-	outfile = '/home/upload/msi_project/mm_depth_analysis/subset-mismatch_depth-%d-%d.txt' % (mismatch, length)
+	outfile = '/home/upload/msi_project/mm_depth_analysis/subsetA-mismatch_depth-%d-%d.txt' % (mismatch, length)
 	with open (outfile, 'w') as f:
 		f.write('#mismatches: %d, flank length: %d\n' % (mismatch, length))
 		f.write('\t')
@@ -275,7 +272,7 @@ def print_mm_depth(bams, mismatch = 3, length = 7):
 
 
 
-def report_num_lengths(bams, annotations, mismatch = 3, length = 7):
+def report_num_lengths(bams, annotations, mismatch = 2, length = 7):
 	'''
 	Brief: Reports to file the MSI status of a patient to compare with the known status, determining MSI status
 		based on number of different lengths
@@ -317,7 +314,7 @@ def report_num_lengths(bams, annotations, mismatch = 3, length = 7):
 			f.write(msi_status + '\t' + known_status + '\t' + str(agree) + '\n')
 
 
-def report_dist_mode(bams, annotations, mismatch = 3, length = 7):
+def report_dist_mode(bams, annotations, mismatch = 2, length = 7):
         '''
         Brief: Reports to file the MSI status of a patient to compare with the known status, determining MSI status
                 based on absolute distance from the mode
@@ -430,7 +427,7 @@ def bw_plot(bams, msi_loci):
 	plt.boxplot(data, labels = label)
 	plt.xticks(rotation = 90)
 	plt.title('Subset Read Depth')
-	plt.savefig('/home/upload/msi_project/depth_plot.png')
+	plt.savefig('/home/upload/msi_project/subsetA_depth_plot.png')
 
 def get_msi_annotations():
 	'''
@@ -493,19 +490,21 @@ def status_plot(bams):
 			plt.legend(loc = 'best')
 			plt.xlabel = ('Average MS length (bp)')
 			plt.ylabel('Number of BAM files')
-			saveloc = '/home/upload/msi_project/status_correlations/all_bamfiles/%s_dist.png' % locus
+			saveloc = '/home/upload/msi_project/status_corr_dist/subsetA/%s_dist.png' % locus
 			plt.savefig(saveloc)			
 			plt.clf()	
 
 # ----------- Main --------------
-msi_loci = get_msi_loci('/home/upload/msi_project/msi_loci_edited.txt')
+msi_loci = get_msi_loci('/home/upload/msi_project/loci/msi_loci_edited.txt')
 
 
 #store bamfiles in a list
 directory = '/home/upload/msi_project/tcga_bam/tumor_bams/annotated/subset'
 bamfiles = scan_files(directory)
 bamfiles = bamfiles[:3]
-#@annotations = get_msi_annotations()
+#annotations = get_msi_annotations()
+
+#bw_plot(bamfiles, msi_loci)
  
 for bam in bamfiles:
 	count_reads(bam, 'MSI-11', show_reads = True, print_full = True)
