@@ -61,17 +61,17 @@ def get_msi_loci(infile):
 	"""
 	Brief: Creates a dictionary storing information about each msi locus
 	Args: string infile
-	Return: dict msi_loci {locus_name | [chromosome, start_pos, end_pos]}
+	Return: dict _MSI_LOCI {locus_name | [chromosome, start_pos, end_pos]}
 	"""
-	msi_loci = {}
+	_MSI_LOCI = {}
 	with open(infile, 'r') as f:
         	for line in f:
                 	if (line.startswith('Name')): #skip the header row
                         	continue
                 	fields = line.split('\t') #list of each column
                 	fields[3] = fields[3].replace('\n', '')
-                	msi_loci[fields[0]] = [fields[1], fields[2], fields[3]]
-	return msi_loci
+                	_MSI_LOCI[fields[0]] = [fields[1], fields[2], fields[3]]
+	return _MSI_LOCI
 
 def count_reads(runfile_loc, locus, run_quality_threshold = 0.1, flank_length = 7,  flank_mismatch = 2, print_full = False, plot = False, show_reads = False, return_mms = False):
 	"""
@@ -86,17 +86,24 @@ def count_reads(runfile_loc, locus, run_quality_threshold = 0.1, flank_length = 
 	runfile = pysam.AlignmentFile(runfile_loc, 'rb')
 	
 	#Locus information
-	start_position = msi_loci[locus][1]
-	end_position = msi_loci[locus][2]
-	chromosome = msi_loci[locus][0]
+	start_position = _MSI_LOCI[locus][1]
+	end_position = _MSI_LOCI[locus][2]
+	chromosome = _MSI_LOCI[locus][0]
 	run_length = int(end_position) - int(start_position) + 1	
+	#increase quality threshold if short run
+	if run_length < 10:
+		run_quality_threshold = .2
+	#if the quality threshold is defined, use that regardless of run length
+	if locus in _QUALITY_THRESHOLDS:
+		run_quality_threshold = _QUALITY_THRESHOLDS[locus]
+
 
 	#find the flanking regions of size specified
 	ref_seq = pysam.FastaFile('/StampFileShare/refs/hg38.fa')
 	front_flank = (ref_seq.fetch('chr' + str(chromosome), int(start_position) - (flank_length + 1), int(start_position) - 1)).upper()
 	back_flank = (ref_seq.fetch('chr' + str(chromosome), int(end_position), int(end_position) + flank_length)).upper()
 	nucleotide = (ref_seq.fetch('chr' + str(chromosome), int(start_position), int(start_position) + 1)).upper()
-
+	
 	#filter runs
 	reads = []
 	polynucleotide_runs = []
@@ -253,15 +260,15 @@ def print_mm_depth(bams, mismatch = 2, length = 7):
 	with open (outfile, 'w') as f:
 		f.write('#mismatches: %d, flank length: %d\n' % (mismatch, length))
 		f.write('\t')
-		for locus in msi_loci:
+		for locus in _MSI_LOCI:
                 	f.write(locus + '\t\t\t')
                 f.write('\n\t')
-		for i in range(len(msi_loci)):
+		for i in range(len(_MSI_LOCI)):
 			f.write('f1 mm\tf2mm\t% accepted reads\t')
 		f.write('\n')
 		for bam in bams:
 			f.write(bam.split('/')[-1].replace('.bam', '') + '\t')
-			for locus in msi_loci:
+			for locus in _MSI_LOCI:
 				accepted_reads, f1_mm, f2_mm, num_reads = count_reads(bam, locus, flank_length = length, flank_mismatch = mismatch, return_mms = True)
 				if num_reads == 0:
 					percent_accepted = "no coverage"
@@ -272,40 +279,38 @@ def print_mm_depth(bams, mismatch = 2, length = 7):
 
 
 
-def report_num_lengths(bams, annotations, mismatch = 2, length = 7):
+def report_num_lengths(bams, mismatch = 2, length = 7):
 	'''
 	Brief: Reports to file the MSI status of a patient to compare with the known status, determining MSI status
 		based on number of different lengths
 	Args: list, int, int
 	Returns: none
 	'''
-	outfile = '/home/upload/msi_project/subset_statuses_length.txt'
+	outfile = '/home/upload/msi_project/diag_analysis/method_1/subsetA_statuses_length.txt'
 		
 	with open (outfile, 'w') as f:
 		f.write('#mismatch: %s, flank length: %s\n' % (str(mismatch), str(length)))
 		#f.write('BAM\tNUM DIF ELEMS\tSTATUS\tKNOWN STATUS\tAGREE?\n')
 		f.write('locus\t')
-		for locus in msi_loci:
+		for locus in _MSI_LOCI:
 			f.write(locus + '\t')
 		f.write('\n')
 		for bam in bams:
 			status_marker = 0
 			bam_name = bam.split('/')[-1].replace('A.bam', '')
 			f.write(bam_name + '\t')
-			for locus in msi_loci:
+			for locus in _MSI_LOCI:
 				accepted_reads = (count_reads(bam, locus, flank_length = length, flank_mismatch = mismatch))
-				#length = int(msi_loci[locus][2]) - int(msi_loci[locus][1]) + 1
-				if len(accepted_reads) < 25:
-					f.write('insufficent reads\t')
-					continue
+				if len(accepted_reads) == 0:
+					f.write('n/a\t')
 				else:
 					f.write(str(len(set(accepted_reads))) + '\t')					
-					status_marker += 1
+				status_marker += 1
 			msi_status = 'MSS'
 			if status_marker > 0:
 				msi_status = 'MSI'
-			if bam_name in annotations:
-				known_status = annotations[bam_name]
+			if bam_name in _ANNOTATIONS:
+				known_status = _ANNOTATIONS[bam_name]
 			else:
 				known_status = 'Not reported'
 			agree = False
@@ -314,13 +319,14 @@ def report_num_lengths(bams, annotations, mismatch = 2, length = 7):
 			f.write(msi_status + '\t' + known_status + '\t' + str(agree) + '\n')
 
 
-def report_dist_mode(bams, annotations, mismatch = 2, length = 7):
+def report_dist_mode(bams, mismatch = 2, length = 7):
         '''
         Brief: Reports to file the MSI status of a patient to compare with the known status, determining MSI status
                 based on absolute distance from the mode
         Args: list, int, int
         Returns: none
-        outfile = '/home/upload/msi_project/subset_statuses_mode.txt'
+	'''
+        outfile = '/home/upload/msi_project/diag_analysis/method_2/subsetA_statuses_mode.txt'
 	
 	all_reads = []
 	modes = []
@@ -328,49 +334,48 @@ def report_dist_mode(bams, annotations, mismatch = 2, length = 7):
 	#Create 2D array of accepted read by locus and bam file
 	for bam in bams:
 		bam_reads = []
-		for locus in msi_loci:
+		for locus in _MSI_LOCI:
 			accepted_reads = count_reads(bam, locus, flank_length = length, flank_mismatch = mismatch)
 			bam_reads.append(accepted_reads)
 		all_reads.append(bam_reads)	
 	
 	#Generate a list of the mode length for each locus
-	for i in range(len(msi_loci)):
+	for i in range(len(_MSI_LOCI)):
 		for j in range(len(all_reads)):
 			locus = []
 			locus.extend(all_reads[j][i])
 		mode = mode_length(locus)
 		modes.append(mode)
 	
-	#find average distance from the mode for each bam each locus, average for all loci per bam, correlate with annotations
+	#find average distance from the mode for each bam each locus, average for all loci per bam, correlate with annotations 
         with open (outfile, 'w') as f:
-                f.write('BAM\n'))
-        	for i in range(len(all_reads): #iterate over all bam files
-                        bam_name = bam.split('/')[-1].replace('A.bam', '')
+                f.write('BAM\n')
+        	for i in range(len(all_reads)): #iterate over all bam files
+                        bam_name = bams[i].split('/')[-1].replace('A.bam', '')
                         f.write(bam_name + '\t')
-                        for j in range(len(modes): #iterate over all loci
-				if len(all_reads[i][j]) == 0 or modes[j] == 'error':
-					avg_distance = 'n/a'
-				total_distance = 0
-				mode = modes[j]
-				for read in all_reads[i][j]:
-					total_distance += abs(mode - len(read))
-				avg_distance = float(total_distance) / len(all_reads[i][j]
-				f.write(avg_distance + '\t')		               
-                            
-                                  msi_status = 'MSI'
-                   if bam_name in annotations:
-                           known_status = annotations[bam_name]
-                   else:
-                           known_status = 'Not reported'
-                                          if msi_status == known_status:
-                                agree == True
-                        f.write(str(status_marker) + '\t' + msi_status + '\t' + known_status + '\t' + str(agree) + '\n')
-			'''
+                        for j in range(len(modes)): #iterate over all loci
+				if modes[j] == 'error':
+					avg_distance = 'low loc covg'
+				elif len(all_reads[i][j]) == 0:
+					avg_distance = 'low bam covg'
+				else:
+					total_distance = 0
+					mode = modes[j]
+					for read in all_reads[i][j]:
+						total_distance += abs(float(mode) - len(read))
+					avg_distance = float(total_distance) / len(all_reads[i][j])
+				f.write(str(avg_distance) + '\t')		               
+			if bam_name in _ANNOTATIONS:
+				known_status = _ANNOTATIONS[bam_name]
+                	else:
+				known_status = 'Not reported'
+			f.write(known_status + '\n')
+
 def mode_length(in_list):
 	'''
 	Brief: returns the mode length of elements in the input list. If there is no mode, returns 'error', if there are multiple modes, returns the mode closest to the arithmetic average. If all modes have the same distance to arithmetic mean, returns the smallest mode
 	Args: list
-	Return: string (if no mode), int (if there is a mode)
+	Return: float if no mode (returns mean), int (mode exists)
 	'''
 	lengths = []
 	dict_counts = {}
@@ -385,8 +390,8 @@ def mode_length(in_list):
 		list_counts.append(counti)
 		dict_counts[i] = counti
 	maxcount = max(list_counts)
-	if maxcount == 1: #there is no mode
-		return 'error'
+	if maxcount == 1: #when there is no mode, use the arithmetic mean
+		return avg_value(lengths)
 	else:
 		modelist = []
 		for key, item in dict_counts.iteritems():
@@ -409,7 +414,7 @@ def mode_length(in_list):
 			return modelist[min_index]
 			
 
-def bw_plot(bams, msi_loci):
+def bw_plot(bams):
 	'''
 	Brief: Print a candlestick plot of the number of accepted reads at each locus
 	Args: lst, dict
@@ -417,7 +422,7 @@ def bw_plot(bams, msi_loci):
 	'''
 	data = []
 	label = []
-	for locus in msi_loci:
+	for locus in _MSI_LOCI:
 		temp = []
 		label.append(locus)
 		for bam in bams:
@@ -436,7 +441,7 @@ def get_msi_annotations():
 	Return: dict
 	'''
 	msi_annotations = {}
-	annotations_file = '/home/upload/msi_project/UCEC_annotations.txt'
+	annotations_file = '/home/upload/msi_project/annotations/UCEC_annotations.txt'
 	with open (annotations_file, 'r') as f:
 		for line in f:
 			fields = line.split('\t')
@@ -448,7 +453,7 @@ def get_msi_annotations():
 				msi_status = fields[22]
 			msi_annotations[fields[4]] = msi_status
 
-	annotations_file = '/home/upload/msi_project/COAD_READ_annotations.txt'
+	annotations_file = '/home/upload/msi_project/annotations/COAD_READ_annotations.txt'
 	with open (annotations_file, 'r') as f:
 		for line in f:
 			fields = line.split('\t')
@@ -468,13 +473,13 @@ def status_plot(bams):
 	Args: lst
 	Return: none 
 	'''
-	for locus in msi_loci:
+	for locus in _MSI_LOCI:
 		msi_avgs = []
 		mss_avgs = []
 		for bam in bams:
 			bam_name = bam.split('/')[-1].replace('A.bam', '')			
-		 	if bam_name in annotations:
-				status = annotations[bam_name]
+		 	if bam_name in _ANNOTATIONS:
+				status = _ANNOTATIONS[bam_name]
 				if status != 'MSI' and status != 'MSS':
 					continue
 				average = avg_length(count_reads(bam, locus))
@@ -495,46 +500,12 @@ def status_plot(bams):
 			plt.clf()	
 
 # ----------- Main --------------
-msi_loci = get_msi_loci('/home/upload/msi_project/loci/msi_loci_edited.txt')
-
+_MSI_LOCI = get_msi_loci('/home/upload/msi_project/loci/msi_loci_edited.txt')
+_QUALITY_THRESHOLDS = {'MSI-11': .25, 'MSI-12': .25, 'MSI-01': .5, 'BAT-25': .18}
+_ANNOTATIONS = get_msi_annotations()
 
 #store bamfiles in a list
 directory = '/home/upload/msi_project/tcga_bam/tumor_bams/annotated/subset'
 bamfiles = scan_files(directory)
-bamfiles = bamfiles[:3]
-#annotations = get_msi_annotations()
 
-#bw_plot(bamfiles, msi_loci)
- 
-for bam in bamfiles:
-	count_reads(bam, 'MSI-11', show_reads = True, print_full = True)
-
-#report_dist_mode(bamfiles, annotations)
-
-#report_dist_mode(bamfiles, annotations)
-'''
-
-for bam in bamfiles:
-	count_reads(bam, 'Mono-27', print_full = True, show_reads = True)
-'''
-'''
-outfile = '/home/upload/msi_project/msi_data.txt'
-with open (outfile, 'w') as f:
-	f.write('\t')
-	for locus in msi_loci:
-		f.write(locus + '\t')
-		f.write('Accepted Reads\t')
-	f.write('\n')
-	f.write('Reference length\t')
-	for locus in msi_loci:
-		f.write(str(int(msi_loci[locus][2]) - int(msi_loci[locus][1])) + '\t\t') 
-	f.write('\n')
-	for bam in bamfiles:
-		f.write(bam + '\t')
-		for locus in msi_loci:
-			temp = count_reads(bam, locus)
-			f.write(str(avg_length(temp)) + '\t')
-			f.write(str(len(temp)) + ' reads \t')
-		f.write('\n')
-'''
-
+report_dist_mode(bamfiles)
