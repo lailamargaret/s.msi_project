@@ -428,6 +428,62 @@ def report_std_dev(bams, reporting_threshold = .9, mismatch = 2, length = 7):
 			print e 
 		return avg_stdevs
 
+def report_z_score(bams, reporting_threshold = 1, mismatch = 2, length = 7):
+	'''
+	Brief: Reports z-score of standard deviation of a sample compared to mean/stdev of MSS known population
+	Args: lst, float, int, int
+	Return: none
+	'''
+	outfile = '/home/upload/msi_project/diag_analysis/method_3/subsetA_statuses_zscore.txt'
+	mss_input = '/home/upload/msi_project/diag_analysis/method_3/MSS_training_data.txt'
+		
+	#{'locus' : ['mean', 'stdev']}	
+	mss_locus_data = {}
+	
+	with open (mss_input, 'r') as f:
+		lines = f.readlines()
+		
+		fields1 = lines[0].split('\t')
+		fields1.pop(0)
+				
+		fields2 = lines[1].split('\t')
+		fields2.pop(0)
+
+		fields3 = lines[2].split('\t')
+		fields3.pop(0)
+
+		for i in range(len(fields1)):
+			fields1[i] = fields1[i].replace('\n', '')
+			fields2[i] = fields2[i].replace('\n', '')
+			fields3[i] = fields3[i].replace('\n', '')
+			mss_locus_data[fields1[i]] = [fields2[i], fields3[i]]
+	print mss_locus_data	
+	'''		
+	with open (outfile, 'w') as f:
+		f.write('#mismatch: %s, flank length: %s, reporting_threshold: %s\n' % (str(mismatch), str(length), str(reporting_threshold)))
+	f.write('locus\t')
+                for locus in _MSI_LOCI:
+                        f.write(locus + '\t')
+                f.write('\n')
+		for bam in bams:
+			bam_name = bam.split('/')[-1].replace('A.bam', '')
+                        f.write(bam_name + '\t')
+			for locus in _MSI_LOCI:
+				accepted_reads = (count_reads(bam, locus, flank_length = length, flank_mismatch = mismatch))
+                                if len(accepted_reads) == 0:
+                                        z_score = 'n/a'
+                                        f.write('n/a\t')
+                                else:
+                                        lengths = [len(e) for e in accepted_reads]
+                                        std_dev = np.std(lengths)
+                                        
+					f.write(str(std_dev) + '\t')
+
+	'''
+
+
+ 
+
 def confusion_matrix(bamfiles, std_devs, reporting_threshold = .9):
 	real_pos = 0
 	real_neg = 0
@@ -600,8 +656,12 @@ _ANNOTATIONS = get_msi_annotations()
 directory = '/home/upload/msi_project/tcga_bam/tumor_bams/annotated/subset'
 bamfiles = scan_files(directory)
 
+report_z_score(bamfiles)
+
+'''
 i = .7
 stdevs = report_std_dev(bamfiles)
 while i <= 1:
 	confusion_matrix(bamfiles, stdevs, reporting_threshold = i)
 	i += .05
+'''
