@@ -232,9 +232,13 @@ def avg_value(lst):
 	if len(lst) == 0:
                 return 'n/a'
 	sum = 0
+	total = 0
 	for each in lst:
+		if each == 'n/a':
+			continue
 		sum += each
-	return float(sum)/len(lst)
+		total += 1
+	return float(sum)/total
 
 def avg_length(lst):
 	"""
@@ -370,6 +374,94 @@ def report_dist_mode(bams, mismatch = 2, length = 7):
                 	else:
 				known_status = 'Not reported'
 			f.write(known_status + '\n')
+
+def report_std_dev(bams, reporting_threshold = .9, mismatch = 2, length = 7):
+	'''
+	Brief: Reports to file the MSI status of a patient to compare with the known status, determining MSI status
+		based on standard deviation
+	Args: lst, int, int
+	Return: None
+	'''	
+	outfile = '/home/upload/msi_project/diag_analysis/method_3/subsetA_statuses_stdev.txt'
+
+	with open (outfile, 'w') as f:
+                f.write('#mismatch: %s, flank length: %s, reporting_threshold: %s\n' % (str(mismatch), str(length), str(reporting_threshold)))
+                f.write('locus\t')
+                for locus in _MSI_LOCI:
+                        f.write(locus + '\t')
+                f.write('\n')
+		avg_stdevs = [] #average for each bamfile all loci
+                for bam in bams:
+                        bam_name = bam.split('/')[-1].replace('A.bam', '')
+                        f.write(bam_name + '\t')
+			locus_stdevs = []
+                        for locus in _MSI_LOCI:
+				accepted_reads = (count_reads(bam, locus, flank_length = length, flank_mismatch = mismatch))
+                                if len(accepted_reads) == 0:
+					std_dev = 'n/a'
+					f.write('n/a\t')
+                                else:
+					lengths = [len(e) for e in accepted_reads]
+                                        std_dev = np.std(lengths)	
+					f.write(str(std_dev) + '\t')
+                        	
+				locus_stdevs.append(std_dev)	
+			
+			bam_stdev = avg_value(locus_stdevs)
+			avg_stdevs.append(bam_stdev)
+			if len(locus_stdevs) == 0:
+				msi_status = 'Indeterminate'
+			else:
+				if bam_stdev < reporting_threshold:
+					msi_status = 'MSS'
+				else:
+					msi_status = 'MSI'
+
+                        if bam_name in _ANNOTATIONS:
+                                known_status = _ANNOTATIONS[bam_name]
+                        else:
+                                known_status = 'Not reported'
+                        
+			f.write(str(bam_stdev) + '\t' + msi_status + '\t' + known_status + '\n')
+		
+		for e in avg_stdevs:
+			print e 
+		return avg_stdevs
+
+def confusion_matrix(bamfiles, std_devs, reporting_threshold = .9):
+	real_pos = 0
+	real_neg = 0
+	false_pos = 0
+	false_neg = 0
+	idx = 0
+	for bam in bamfiles:
+		bam_name = bam.split('/')[-1].replace('A.bam', '')
+		if bam_name in _ANNOTATIONS:
+			known_status = _ANNOTATIONS[bam_name]
+		else:
+			known_status = 'Not reported'
+		if std_devs[idx] < reporting_threshold:
+			msi_status = 'MSS'
+		else:
+			msi_status = 'MSI'	
+		if msi_status == 'MSI' and known_status == 'MSI':
+			real_pos += 1
+		elif msi_status == 'MSI' and known_status == 'MSS':
+			false_pos += 1
+		elif msi_status == 'MSS' and known_status == 'MSI':
+			false_neg += 1	
+		elif msi_status == 'MSS' and known_status == 'MSS':
+			real_neg += 1
+		idx += 1
+
+	total = real_pos + false_pos + false_neg + real_neg
+	perc_correct = (real_pos + false_pos)/float(total)
+	print 'Threshold: %f' % reporting_threshold
+	print 'True positive: %d' % real_pos
+	print 'False positive: %d' % false_pos
+	print 'True negative: %d' % real_neg
+	print 'False negative: %d' % false_neg
+	print 'Percentage correct: %f' % perc_correct
 
 def mode_length(in_list):
 	'''
@@ -508,4 +600,8 @@ _ANNOTATIONS = get_msi_annotations()
 directory = '/home/upload/msi_project/tcga_bam/tumor_bams/annotated/subset'
 bamfiles = scan_files(directory)
 
-report_dist_mode(bamfiles)
+i = .7
+stdevs = report_std_dev(bamfiles)
+while i <= 1:
+	confusion_matrix(bamfiles, stdevs, reporting_threshold = i)
+	i += .05
