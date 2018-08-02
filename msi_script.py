@@ -382,14 +382,14 @@ def report_std_dev(bams, reporting_threshold = .9, mismatch = 2, length = 7):
 	Args: lst, int, int
 	Return: None
 	'''	
-	outfile = '/home/upload/msi_project/diag_analysis/method_3/subsetA_statuses_stdev.txt'
+	outfile = '/home/upload/msi_project/diag_analysis/method_3/mss_training_set_statuses_stdev.txt'
 
 	with open (outfile, 'w') as f:
                 f.write('#mismatch: %s, flank length: %s, reporting_threshold: %s\n' % (str(mismatch), str(length), str(reporting_threshold)))
                 f.write('locus\t')
                 for locus in _MSI_LOCI:
                         f.write(locus + '\t')
-                f.write('\n')
+                f.write('Average\tCall\tKnown status\n')
 		avg_stdevs = [] #average for each bamfile all loci
                 for bam in bams:
                         bam_name = bam.split('/')[-1].replace('A.bam', '')
@@ -424,8 +424,6 @@ def report_std_dev(bams, reporting_threshold = .9, mismatch = 2, length = 7):
                         
 			f.write(str(bam_stdev) + '\t' + msi_status + '\t' + known_status + '\n')
 		
-		for e in avg_stdevs:
-			print e 
 		return avg_stdevs
 
 def report_z_score(bams, reporting_threshold = 1, mismatch = 2, length = 7):
@@ -457,32 +455,38 @@ def report_z_score(bams, reporting_threshold = 1, mismatch = 2, length = 7):
 			fields2[i] = fields2[i].replace('\n', '')
 			fields3[i] = fields3[i].replace('\n', '')
 			mss_locus_data[fields1[i]] = [fields2[i], fields3[i]]
-	print mss_locus_data	
-	'''		
+	
 	with open (outfile, 'w') as f:
 		f.write('#mismatch: %s, flank length: %s, reporting_threshold: %s\n' % (str(mismatch), str(length), str(reporting_threshold)))
-	f.write('locus\t')
+		f.write('locus\t')
                 for locus in _MSI_LOCI:
                         f.write(locus + '\t')
-                f.write('\n')
+                f.write('Status\n')
 		for bam in bams:
 			bam_name = bam.split('/')[-1].replace('A.bam', '')
-                        f.write(bam_name + '\t')
+			f.write(bam_name + '\t')
 			for locus in _MSI_LOCI:
+				#no stdev info at the locus
+				if float(mss_locus_data[locus][1]) == 0:
+					f.write('no locus stdev\t')
+					continue
 				accepted_reads = (count_reads(bam, locus, flank_length = length, flank_mismatch = mismatch))
-                                if len(accepted_reads) == 0:
-                                        z_score = 'n/a'
-                                        f.write('n/a\t')
-                                else:
-                                        lengths = [len(e) for e in accepted_reads]
-                                        std_dev = np.std(lengths)
-                                        
-					f.write(str(std_dev) + '\t')
+				#no reads to calculate z score
+				if len(accepted_reads) == 0:
+					f.write('n/a\t')
+				else: #can calculate a z score
+					lengths = [len(e) for e in accepted_reads]
+					std_dev = np.std(lengths)
+					z_score = ((float(mss_locus_data[locus][0]) - float(std_dev)) / float(mss_locus_data[locus][1]))   
+					f.write(str(z_score) + '\t')
+			
+			if bam_name in _ANNOTATIONS:
+				known_status = _ANNOTATIONS[bam_name]
+			else:
+				known_status = 'Not reported'
+			
+			f.write(known_status + '\n')
 
-	'''
-
-
- 
 
 def confusion_matrix(bamfiles, std_devs, reporting_threshold = .9):
 	real_pos = 0
