@@ -5,6 +5,8 @@ matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.patches as mpatches
+#from sklearn import metrics
+#from ortools.linear_solver import pywraplp
 # --------- Functions -----------
 def scan_files(directory, tumor_only = False):
 	bam_files = []
@@ -426,38 +428,16 @@ def report_std_dev(bams, reporting_threshold = .9, mismatch = 2, length = 7):
 		
 		return avg_stdevs
 
-def report_z_score(bams, reporting_threshold = 1, mismatch = 2, length = 7):
+def report_z_score(bams, mismatch = 2, length = 7):
 	'''
 	Brief: Reports z-score of standard deviation of a sample compared to mean/stdev of MSS known population
 	Args: lst, float, int, int
 	Return: none
 	'''
 	outfile = '/home/upload/msi_project/diag_analysis/method_3/subsetA_statuses_zscore.txt'
-	mss_input = '/home/upload/msi_project/diag_analysis/method_3/MSS_training_data.txt'
 		
-	#{'locus' : ['mean', 'stdev']}	
-	mss_locus_data = {}
-	
-	with open (mss_input, 'r') as f:
-		lines = f.readlines()
-		
-		fields1 = lines[0].split('\t')
-		fields1.pop(0)
-				
-		fields2 = lines[1].split('\t')
-		fields2.pop(0)
-
-		fields3 = lines[2].split('\t')
-		fields3.pop(0)
-
-		for i in range(len(fields1)):
-			fields1[i] = fields1[i].replace('\n', '')
-			fields2[i] = fields2[i].replace('\n', '')
-			fields3[i] = fields3[i].replace('\n', '')
-			mss_locus_data[fields1[i]] = [fields2[i], fields3[i]]
-	
 	with open (outfile, 'w') as f:
-		f.write('#mismatch: %s, flank length: %s, reporting_threshold: %s\n' % (str(mismatch), str(length), str(reporting_threshold)))
+		f.write('#mismatch: %s, flank length: %s\n' % (str(mismatch), str(length)))
 		f.write('locus\t')
                 for locus in _MSI_LOCI:
                         f.write(locus + '\t')
@@ -466,19 +446,8 @@ def report_z_score(bams, reporting_threshold = 1, mismatch = 2, length = 7):
 			bam_name = bam.split('/')[-1].replace('A.bam', '')
 			f.write(bam_name + '\t')
 			for locus in _MSI_LOCI:
-				#no stdev info at the locus
-				if float(mss_locus_data[locus][1]) == 0:
-					f.write('no locus stdev\t')
-					continue
-				accepted_reads = (count_reads(bam, locus, flank_length = length, flank_mismatch = mismatch))
-				#no reads to calculate z score
-				if len(accepted_reads) == 0:
-					f.write('n/a\t')
-				else: #can calculate a z score
-					lengths = [len(e) for e in accepted_reads]
-					std_dev = np.std(lengths)
-					z_score = ((float(mss_locus_data[locus][0]) - float(std_dev)) / float(mss_locus_data[locus][1]))   
-					f.write(str(z_score) + '\t')
+				z_score = get_z_score(bam, locus, mismatch = mismatch, length = length)	
+				f.write(str(z_score) + '\t')
 			
 			if bam_name in _ANNOTATIONS:
 				known_status = _ANNOTATIONS[bam_name]
@@ -487,20 +456,66 @@ def report_z_score(bams, reporting_threshold = 1, mismatch = 2, length = 7):
 			
 			f.write(known_status + '\n')
 
+def get_z_score(bamfile, locus, mismatch = 2, length = 7):
+	if float(_MSS_LOCUS_DATA[locus][1]) == 0:
+		return 'error'
 
-def confusion_matrix(bamfiles, std_devs, reporting_threshold = .9):
+	accepted_reads = count_reads(bamfile, locus, flank_length = length, flank_mismatch = mismatch)
+	if len(accepted_reads) == 0:
+		return 'error'
+	else:
+		lengths = [len(e) for e in accepted_reads]
+		std_dev = np.std(lengths)
+		z_score = ((float(_MSS_LOCUS_DATA[locus][0]) - float(std_dev)) / float(_MSS_LOCUS_DATA[locus][1]))
+		z_score = abs(z_score)
+		return z_score
+
+def locus_histogram(bamfiles):
+	'''
+	Brief: Produces histograms of the z-scores of bamfiles, separated by annotation (MSI or MSS)
+	Args: lst
+	Return: None
+	''' 
+	for locus in _MSI_LOCI:
+                msi_avgs = []
+                mss_avgs = []
+                for bam in bamfiles:
+                        bam_name = bam.split('/')[-1].replace('A.bam', '')
+                        if bam_name in _ANNOTATIONS:
+                                status = _ANNOTATIONS[bam_name]
+                                if status != 'MSI' and status != 'MSS':
+                                        continue
+				z_score = get_z_score(bam, locus)
+                                if status == 'MSI':
+                                        msi_avgs.append(z_score)
+                                elif status == 'MSS':
+                                        mss_avgs.append(z_score)
+                if len(msi_avgs) != 0 or len(mss_avgs) != 0:
+                        plt.hist([msi_avgs, mss_avgs], color = ['yellow', 'orange'], label = ['MSI', 'MSS'])
+                        plt.title('%s Z-Score Distribution - Subset A' % locus)
+                        plt.legend(loc = 'best')
+                        plt.xlabel = ('Average MS length (bp)')
+                        plt.ylabel('Number of BAM files')
+                        saveloc = '/home/upload/msi_project/diag_analysis/method_3/locus_plots/%s_dist.png' % locus
+                        plt.savefig(saveloc)
+                        plt.clf()
+
+
+
+def confusion_matrix(bamfiles, metric_list, reporting_threshold = .9):
 	real_pos = 0
 	real_neg = 0
 	false_pos = 0
 	false_neg = 0
 	idx = 0
+
 	for bam in bamfiles:
 		bam_name = bam.split('/')[-1].replace('A.bam', '')
 		if bam_name in _ANNOTATIONS:
 			known_status = _ANNOTATIONS[bam_name]
 		else:
 			known_status = 'Not reported'
-		if std_devs[idx] < reporting_threshold:
+		if metric_list[idx] < reporting_threshold:
 			msi_status = 'MSS'
 		else:
 			msi_status = 'MSI'	
@@ -516,12 +531,24 @@ def confusion_matrix(bamfiles, std_devs, reporting_threshold = .9):
 
 	total = real_pos + false_pos + false_neg + real_neg
 	perc_correct = (real_pos + false_pos)/float(total)
-	print 'Threshold: %f' % reporting_threshold
-	print 'True positive: %d' % real_pos
-	print 'False positive: %d' % false_pos
-	print 'True negative: %d' % real_neg
-	print 'False negative: %d' % false_neg
-	print 'Percentage correct: %f' % perc_correct
+	#print 'Threshold: %f' % reporting_threshold
+	#print 'True positive: %d' % real_pos
+	#print 'False positive: %d' % false_pos
+	#print 'True negative: %d' % real_neg
+	#print 'False negative: %d' % false_neg
+	#print 'Percentage correct: %f' % perc_correct
+
+	return real_pos, false_pos 
+
+'''	
+def roc_plot(bamfiles):
+	z_scores = []
+	for bam in bamfiles:
+		z_scores.append(get_z_score(bam, 'H-06')
+	#for i in 
+	#tpr, fpr = confusion_matrix(bamfiles, z_scores)	
+'''
+
 
 def mode_length(in_list):
 	'''
@@ -619,6 +646,33 @@ def get_msi_annotations():
 
 	return msi_annotations
 
+def get_mss_locus_data():
+	
+	mss_input = '/home/upload/msi_project/diag_analysis/method_3/MSS_training_data.txt'
+
+	#{'locus' : ['mean', 'stdev']}
+        mss_locus_data = {}
+
+        with open (mss_input, 'r') as f:
+                lines = f.readlines()
+
+                fields1 = lines[0].split('\t')
+                fields1.pop(0)
+
+                fields2 = lines[1].split('\t')
+                fields2.pop(0)
+
+                fields3 = lines[2].split('\t')
+                fields3.pop(0)
+
+                for i in range(len(fields1)):
+                        fields1[i] = fields1[i].replace('\n', '')
+                        fields2[i] = fields2[i].replace('\n', '')
+                        fields3[i] = fields3[i].replace('\n', '')
+                        mss_locus_data[fields1[i]] = [fields2[i], fields3[i]]	
+	return mss_locus_data
+
+
 def status_plot(bams):
 	'''
 	Brief: Generate histograms showing average length of MS region depending on MSI status
@@ -655,12 +709,14 @@ def status_plot(bams):
 _MSI_LOCI = get_msi_loci('/home/upload/msi_project/loci/msi_loci_edited.txt')
 _QUALITY_THRESHOLDS = {'MSI-11': .25, 'MSI-12': .25, 'MSI-01': .5, 'BAT-25': .18}
 _ANNOTATIONS = get_msi_annotations()
+_MSS_LOCUS_DATA = get_mss_locus_data()
+
 
 #store bamfiles in a list
 directory = '/home/upload/msi_project/tcga_bam/tumor_bams/annotated/subset'
 bamfiles = scan_files(directory)
 
-report_z_score(bamfiles)
+locus_histogram(bamfiles)
 
 '''
 i = .7
