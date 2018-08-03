@@ -173,4 +173,56 @@ def mode_length(in_list):
                                         min_index = i
                                         current_min = distances[i]
 
-                        return modelist[min_index]
+
+
+def bw_plot(bams):
+        """
+        Brief: Print a candlestick plot of the number of accepted reads at each locus
+        Args: lst, dict
+        Return: none
+        """
+        data = []
+        label = []
+        for locus in _MSI_LOCI:
+                temp = []
+                label.append(locus)
+                for bam in bams:
+                        runs, favg, bavg, num_reads = count_reads.count(bam, locus, return_mms = True)
+                        temp.append(num_reads)
+                data.append(temp)
+        plt.boxplot(data, labels = label)
+        plt.xticks(rotation = 90)
+        plt.title('Subset Read Depth')
+        plt.savefig('/home/upload/msi_project/subsetA_depth_plot.png')
+
+def status_plot(bams):
+        """
+        Brief: Generate histograms showing average length of MS region depending on MSI status
+        Args: lst
+        Return: none
+        """
+        for locus in _MSI_LOCI:
+                msi_avgs = []
+                mss_avgs = []
+                for bam in bams:
+                        bam_name = bam.split('/')[-1].replace('A.bam', '')
+                        if bam_name in _ANNOTATIONS:
+                                status = _ANNOTATIONS[bam_name]
+                                if status != 'MSI' and status != 'MSS':
+                                        continue
+                                average = avg_length(count_reads(bam, locus))
+                                if average == 'Insufficient reads':
+                                        continue
+                                if status == 'MSI':
+                                        msi_avgs.append(float(average))
+                                elif status == 'MSS':
+                                        mss_avgs.append(float(average))
+                if len(msi_avgs) != 0 or len(mss_avgs) != 0:
+                        plt.hist([msi_avgs, mss_avgs], color = ['red', 'blue'], label = ['MSI', 'MSS'])
+                        plt.title('%s Distribution (subset)' % locus)
+                        plt.legend(loc = 'best')
+                        plt.xlabel = ('Average MS length (bp)')
+                        plt.ylabel('Number of BAM files')
+                        saveloc = '/home/upload/msi_project/status_corr_dist/subsetA/%s_dist.png' % locus
+                        plt.savefig(saveloc)
+                        plt.clf()                        return modelist[min_index]
