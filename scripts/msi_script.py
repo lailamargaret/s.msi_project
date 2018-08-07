@@ -59,31 +59,6 @@ def get_avg_length(bamfile, locus, mismatch = 2, length = 7):
 		return 'error'
 	else:	
 			
-	
-
-def report_dist_mode(bams, mismatch = 2, length = 7):
-        """
-        Brief: Reports to file the MSI status of a patient to compare with the known status, determining MSI status
-                based on absolute distance from the mode
-        Args: list, int, int
-        Returns: none
-        """
-        outfile = '/home/upload/msi_project/diag_analysis/method_2/subsetA_dist_mode.txt'
-        
-	with open (outfile, 'w') as f:
-                f.write('Bam name\n')
-		for bam in bams:
-                        bam_name = bam.split('/')[-1].replace('A.bam', '')
-                        f.write(bam_name + '\t')
-                        for locus in _MSI_LOCI: #iterate over all loci
-                        	dist_mode = get_dist_mode(bam, locus)
-				f.write(str(dist_mode) + '\t')
-			if bam_name in _ANNOTATIONS:
-                                known_status = _ANNOTATIONS[bam_name]
-                        else:
-                                known_status = 'Not reported'
-                        f.write(known_status + '\n')
-
 def report(bams, method, mismatch = 2, length = 7):
         """
         Brief: Reports to file some metric for each bamfile and locus depending on parameter, known MSI status
@@ -121,50 +96,8 @@ def report(bams, method, mismatch = 2, length = 7):
                                 known_status = 'Not reported'
                         f.write(known_status + '\n')
 
-
-def mode_length(in_list):
-        '''
-        Brief: returns the mode length of elements in the input list. If there is no mode, returns 'error', if there are multiple modes, returns the mode closest to the arithmetic average. If all modes have the same distance to arithmetic mean, returns the smallest mode
-        Args: list
-        Return: float if no mode (returns mean), int (mode exists)
-        '''
-        lengths = []
-        dict_counts = {}
-        list_counts = []
-        if len(in_list) == 0:
-                return 'error'
-        for i in range(len(in_list)):
-                lengths.append(len(in_list[i]))
-
-        for i in lengths:
-                counti = lengths.count(i)
-                list_counts.append(counti)
-                dict_counts[i] = counti
-        maxcount = max(list_counts)
-        if maxcount == 1: #when there is no mode, use the arithmetic mean
-                return avg_value(lengths)
-        else:
-                modelist = []
-                for key, item in dict_counts.iteritems():
-                        if item == maxcount:
-                                modelist.append(str(key))
-                if len(modelist) == 1: #there is exactly 1 mode
-                        return modelist[0]
-                else: #more than 1 mode, return the one closest to the arithmetic mean
-                        average = avg_length(in_list)
-                        distances = []
-                        for i in modelist:
-                                distances.append(abs(float(i) - average))
-                        min_index = 0
-                        current_min = distances[0]
-                        for i in range(len(distances)):
-                                if distances[i] < current_min:
-                                        min_index = i
-                                        current_min = distances[i]
-
-
 def roc_curve(bamfiles, method, plot = False):
-	if method == 'z-score':
+	if method == 'z_score':
 		method_no = 3
 	elif method == 'dist_mode':
 		method_no = 2
@@ -241,10 +174,20 @@ def roc_curve(bamfiles, method, plot = False):
 	
 def locus_histogram(bamfiles):
 	"""	
-	Brief: Produces histograms of the z-scores of bamfiles, separated by annotation (MSI or MSS)
+	Brief: Produces histograms of the score of some method of bamfiles, separated by annotation (MSI or MSS)
 	Args: lst
 	Return: None
 	""" 
+	if method == 'z_score':
+                method_no = 3
+        elif method == 'dist_mode':
+                method_no = 2
+        elif method == 'emd':
+                method_no = 4
+        else:
+                print 'Error: unknown method'
+                return
+	
 	for locus in _MSI_LOCI:
                 msi_avgs = []
                 mss_avgs = []
@@ -254,13 +197,21 @@ def locus_histogram(bamfiles):
                                 status = _ANNOTATIONS[bam_name]
                                 if status != 'MSI' and status != 'MSS':
                                         continue
-				metric = get_dist_mode(bam, locus)
+				
+				if method_no == 2:
+					metric = get_dist_mode(bam, locus)
+				elif method_no == 3:
+					metric = get_z_score(bam, locus)
+				elfi method_no == 4:
+					metric = get_emd(bam, locus)	
+			
                                 if metric == 'error':
 					continue
 				if status == 'MSI':
                                         msi_avgs.append(float(metric))
                                 elif status == 'MSS':
                                         mss_avgs.append(float(metric))
+	
                 if len(msi_avgs) != 0 or len(mss_avgs) != 0:
                         plt.hist([msi_avgs, mss_avgs], color = ['yellow', 'orange'], label = ['MSI', 'MSS'])
                         plt.title('%s Distance from Mode Distribution - Subset A' % locus)
@@ -272,34 +223,6 @@ def locus_histogram(bamfiles):
                         plt.clf()
 		else:
 			print 'No data to plot for %s' % locus
-
-def report_z_score(bams, mismatch = 2, length = 7):
-        '''
-        Brief: Reports z-score of standard deviation of a sample compared to mean/stdev of MSS known population
-        Args: lst, float, int, int
-        Return: none
-        '''
-        outfile = '/home/upload/msi_project/diag_analysis/method_3/subsetA_statuses_zscore.txt'
-
-        with open (outfile, 'w') as f:
-                f.write('#mismatch: %s, flank length: %s\n' % (str(mismatch), str(length)))
-                f.write('locus\t')
-                for locus in _MSI_LOCI:
-                        f.write(locus + '\t')
-                f.write('Status\n')
-                for bam in bams:
-                        bam_name = bam.split('/')[-1].replace('A.bam', '')
-                        f.write(bam_name + '\t')
-                        for locus in _MSI_LOCI:
-                                z_score = get_z_score(bam, locus, mismatch = mismatch, length = length)
-                                f.write(str(z_score) + '\t')
-
-                        if bam_name in _ANNOTATIONS:
-                                known_status = _ANNOTATIONS[bam_name]
-                        else:
-                                known_status = 'Not reported'
-
-                        f.write(known_status + '\n')
 
 
 # ----------- Main --------------
