@@ -52,7 +52,13 @@ def get_dist_mode(bamfile, locus, mismatch = 2, length = 7):
 		distance += abs(read - float(_MSS_LOCUS_DATA[locus][2]))
 		count += 1
 	return distance / count
-	
+
+def get_avg_length(bamfile, locus, mismatch = 2, length = 7):
+	accepted_reads = count.count_reads(bamfile, locus, flank_length = length, flank_mismatch = mismatch)
+	if len(accepted_reads) == 0:
+		return 'error'
+	else:	
+			
 	
 
 def report_dist_mode(bams, mismatch = 2, length = 7):
@@ -73,6 +79,43 @@ def report_dist_mode(bams, mismatch = 2, length = 7):
                         	dist_mode = get_dist_mode(bam, locus)
 				f.write(str(dist_mode) + '\t')
 			if bam_name in _ANNOTATIONS:
+                                known_status = _ANNOTATIONS[bam_name]
+                        else:
+                                known_status = 'Not reported'
+                        f.write(known_status + '\n')
+
+def report(bams, method, mismatch = 2, length = 7):
+        """
+        Brief: Reports to file some metric for each bamfile and locus depending on parameter, known MSI status
+        Args: list, str, int, int
+        Returns: none
+        """
+	if method == 'z_score':
+	        method_no = 3
+        elif method == 'dist_mode':
+                method_no = 2
+        elif method == 'emd':
+                method_no = 4
+        else:
+                print 'Error: unknown method'
+                return
+
+        outfile = '/home/upload/msi_project/diag_analysis/method_%d/subsetA_%s.txt' % (method_no, method)
+
+        with open (outfile, 'w') as f:
+                f.write('Bam name\n')
+                for bam in bams:
+                        bam_name = bam.split('/')[-1].replace('A.bam', '')
+                        f.write(bam_name + '\t')
+                        for locus in _MSI_LOCI: #iterate over all loci
+                                if method_no == 2:
+					metric = get_dist_mode(bam, locus)
+                                elif method_no == 3:
+					metric = get_z_score(bam, locus)
+				elif method_no == 4:
+					metric = get_emd(bam,locus)
+				f.write(str(metric) + '\t')
+                        if bam_name in _ANNOTATIONS:
                                 known_status = _ANNOTATIONS[bam_name]
                         else:
                                 known_status = 'Not reported'
