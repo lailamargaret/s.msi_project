@@ -67,14 +67,14 @@ def report_std_dev(bams, reporting_threshold = .9, mismatch = 2, length = 7):
                 f.write('locus\t')
                 for locus in _MSI_LOCI:
                         f.write(locus + '\t')
-                f.write('Average\tCall\tKnown status\n')
+                f.write('Known status\n')
                 avg_stdevs = [] #average for each bamfile all loci
                 for bam in bams:
                         bam_name = bam.split('/')[-1].replace('A.bam', '')
                         f.write(bam_name + '\t')
                         locus_stdevs = []
                         for locus in _MSI_LOCI:
-                                accepted_reads = (count_reads(bam, locus, flank_length = length, flank_mismatch = mismatch))
+                                accepted_reads = count_reads.count(bam, locus, flank_length = length, flank_mismatch = mismatch)
                                 if len(accepted_reads) == 0:
                                         std_dev = 'n/a'
                                         f.write('n/a\t')
@@ -85,24 +85,18 @@ def report_std_dev(bams, reporting_threshold = .9, mismatch = 2, length = 7):
 
                                 locus_stdevs.append(std_dev)
 
-                        bam_stdev = avg_value(locus_stdevs)
+                        bam_stdev = lstproc.avg_value(locus_stdevs)
                         avg_stdevs.append(bam_stdev)
-                        if len(locus_stdevs) == 0:
-                                msi_status = 'Indeterminate'
-                        else:
-                                if bam_stdev < reporting_threshold:
-                                        msi_status = 'MSS'
-                                else:
-                                        msi_status = 'MSI'
 
                         if bam_name in _ANNOTATIONS:
                                 known_status = _ANNOTATIONS[bam_name]
                         else:
                                 known_status = 'Not reported'
 
-                        f.write(str(bam_stdev) + '\t' + msi_status + '\t' + known_status + '\n')
+                        f.write(known_status + '\n')
 
                 return avg_stdevs
+
 
 def report_z_score(bams, mismatch = 2, length = 7):
         '''
@@ -172,7 +166,7 @@ def mode_length(in_list):
                                 if distances[i] < current_min:
                                         min_index = i
                                         current_min = distances[i]
-
+					return modelist[min_index]
 
 
 def bw_plot(bams):
@@ -225,4 +219,82 @@ def status_plot(bams):
                         plt.ylabel('Number of BAM files')
                         saveloc = '/home/upload/msi_project/status_corr_dist/subsetA/%s_dist.png' % locus
                         plt.savefig(saveloc)
-                        plt.clf()                        return modelist[min_index]
+                        plt.clf()
+
+
+def earthmover_distance(p1, p2):
+    dist1 = {x: count / len(p1) for (x, count) in Counter(p1).items()}
+    dist2 = {x: count / len(p2) for (x, count) in Counter(p2).items()}
+    solver = pywraplp.Solver('earthmover_distance', pywraplp.Solver.GLOP_LINEAR_PROGRAMMING)
+ 
+    variables = dict()
+ 
+    # for each pile in dist1, the constraint that says all the dirt must leave this pile
+    dirt_leaving_constraints = defaultdict(lambda: 0)
+ 
+    # for each hole in dist2, the constraint that says this hole must be filled
+    dirt_filling_constraints = defaultdict(lambda: 0)
+ 
+    # the objective
+    objective = solver.Objective()
+    objective.SetMinimization()
+ 
+    for (x, dirt_at_x) in dist1.items():
+        for (y, capacity_of_y) in dist2.items():
+            amount_to_move_x_y = solver.NumVar(0, solver.infinity(), 'z_{%s, %s}' % (x, y))
+            variables[(x, y)] = amount_to_move_x_y
+            dirt_leaving_constraints[x] += amount_to_move_x_y
+            dirt_filling_constraints[y] += amount_to_move_x_y
+            objective.SetCoefficient(amount_to_move_x_y, euclidean_distance(x, y))
+ 
+    for x, linear_combination in dirt_leaving_constraints.items():
+        solver.Add(linear_combination == dist1[x])
+ 
+    for y, linear_combination in dirt_filling_constraints.items():
+        solver.Add(linear_combination == dist2[y])
+ 
+    status = solver.Solve()
+    if status not in [solver.OPTIMAL, solver.FEASIBLE]:
+        raise Exception('Unable to find feasible solution')
+ 
+    return objective.Value()
+
+
+def confusion_matrix(bamfiles, metric_list, reporting_threshold = .9):
+        real_pos = 0
+        real_neg = 0
+        false_pos = 0
+        false_neg = 0
+        idx = 0
+
+        for bam in bamfiles:
+                bam_name = bam.split('/')[-1].replace('A.bam', '')
+                if bam_name in _ANNOTATIONS:
+                        known_status = _ANNOTATIONS[bam_name]
+                else:
+                        known_status = 'Not reported'
+                if metric_list[idx] < reporting_threshold:
+                        msi_status = 'MSS'
+                else:
+                        msi_status = 'MSI'
+                if msi_status == 'MSI' and known_status == 'MSI':
+                        real_pos += 1
+                elif msi_status == 'MSI' and known_status == 'MSS':
+                        false_pos += 1
+                elif msi_status == 'MSS' and known_status == 'MSI':
+                        false_neg += 1
+                elif msi_status == 'MSS' and known_status == 'MSS':
+                        real_neg += 1
+                idx += 1
+
+        total = real_pos + false_pos + false_neg + real_neg
+        perc_correct = (real_pos + false_pos)/float(total)
+        #print 'Threshold: %f' % reporting_threshold
+        #print 'True positive: %d' % real_pos
+        #print 'False positive: %d' % false_pos
+        #print 'True negative: %d' % real_neg
+        #print 'False negative: %d' % false_neg
+        #print 'Percentage correct: %f' % perc_correct
+
+        return real_pos, false_pos
+

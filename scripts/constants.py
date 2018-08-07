@@ -52,9 +52,9 @@ def get_msi_annotations():
 
 def get_mss_locus_data():
 
-        mss_input = '/home/upload/msi_project/diag_analysis/method_3/MSS_training_data.txt'
+        mss_input = '/home/upload/msi_project/diag_analysis/MSS_training_data.txt'
 
-        #{'locus' : ['mean', 'stdev']}
+        #{'locus' : ['mean', 'stdev', 'mode']}
         mss_locus_data = {}
 
         with open (mss_input, 'r') as f:
@@ -68,12 +68,16 @@ def get_mss_locus_data():
 
                 fields3 = lines[2].split('\t')
                 fields3.pop(0)
+	
+		fields4 = lines[3].split('\t')
+		fields4.pop(0)
 
                 for i in range(len(fields1)):
                         fields1[i] = fields1[i].replace('\n', '')
                         fields2[i] = fields2[i].replace('\n', '')
                         fields3[i] = fields3[i].replace('\n', '')
-                        mss_locus_data[fields1[i]] = [fields2[i], fields3[i]]
+                        fields4[i] = fields4[i].replace('\n', '')
+			mss_locus_data[fields1[i]] = [fields2[i], fields3[i], fields4[i]]
         return mss_locus_data
 
 _QUALITY_THRESHOLDS =  {'MSI-11': .25, 'MSI-12': .25, 'MSI-01': .5, 'BAT-25': .18}
