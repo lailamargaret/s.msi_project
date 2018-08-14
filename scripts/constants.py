@@ -19,7 +19,7 @@ def get_msi_loci():
 
 def get_msi_annotations():
         '''
-        Brief: Generate a dict containing all loci from txt file with their msi status
+        Brief: Generate a dict containing all bam files from txt file with their msi status
         Args: none
         Return: dict
         '''
@@ -72,19 +72,45 @@ def get_mss_locus_data():
 		fields4 = lines[3].split('\t')
 		fields4.pop(0)
 
+		fields5 = lines[4].split('\t')
+		fields5.pop(0)
+		
+		fields6 = lines[5].split('\t')
+		fields6.pop(0)
+
                 for i in range(len(fields1)):
                         fields1[i] = fields1[i].replace('\n', '')
                         fields2[i] = fields2[i].replace('\n', '')
                         fields3[i] = fields3[i].replace('\n', '')
                         fields4[i] = fields4[i].replace('\n', '')
-			mss_locus_data[fields1[i]] = [fields2[i], fields3[i], fields4[i]]
+			fields5[i] = fields5[i].replace('\n', '')
+			fields6[i] = fields6[i].replace('\n', '')
+			mss_locus_data[fields1[i]] = [fields2[i], fields3[i], fields4[i], fields5[i], fields6[i]]
         return mss_locus_data
+
+def get_ml_modes():
+	mlmodes = '/home/upload/msi_project/ML/modes.txt'
+	ml_modes = {}
+	with open(mlmodes, 'r') as f:
+		lines = f.readlines()
+		
+		fields1 = lines[0].split('\t')
+                fields1.pop(0)
+
+                fields2 = lines[1].split('\t')
+                fields2.pop(0)
+
+		for i in range(len(fields1)):
+                        fields1[i] = fields1[i].replace('\n', '')
+                        fields2[i] = fields2[i].replace('\n', '')
+			ml_modes[fields1[i]] = fields2[i]
+	return ml_modes	
 
 _QUALITY_THRESHOLDS =  {'MSI-11': .25, 'MSI-12': .25, 'MSI-01': .5, 'BAT-25': .18}
 
 _MSI_LOCI = get_msi_loci()
 _ANNOTATIONS = get_msi_annotations()
 _MSS_LOCUS_DATA = get_mss_locus_data()
-
+_ML_MODES = get_ml_modes()
 
 

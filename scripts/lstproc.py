@@ -41,6 +41,7 @@ def mode_length(in_list):
         lengths = []
         dict_counts = {}
         list_counts = []
+	#input list is empty
         if len(in_list) == 0:
                 return 'error'
         for i in range(len(in_list)):
@@ -71,6 +72,6 @@ def mode_length(in_list):
                                 if distances[i] < current_min:
                                         min_index = i
                                         current_min = distances[i]
-
+			return modelist[min_index]
 
 
