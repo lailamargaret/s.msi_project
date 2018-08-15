@@ -1,4 +1,5 @@
 ##Code modified from Google's Machine Learning Crash Course
+from constants import _MSI_LOCI
 import math
 
 import matplotlib
@@ -13,10 +14,6 @@ from tensorflow.python.data import Dataset
 tf.logging.set_verbosity(tf.logging.ERROR)
 pd.options.display.max_rows = 10
 pd.options.display.float_format = '{:.1f}'.format
-
-training_set = pd.read_csv("/home/upload/msi_project/ML/MSI-06/training_set_df.txt", sep="\t")
-validation_set = pd.read_csv("/home/upload/msi_project/ML/MSI-06/validation_set_df.txt", sep="\t")
-
 
 def preprocess_features(locus_df):
   """Prepares input features from a locus data set.
@@ -52,25 +49,6 @@ def preprocess_targets(locus_df):
   output_targets["msi_status"] = locus_df["msi_status"]
   return output_targets
 
-
-# Preprocess training examples and targets.
-training_examples = preprocess_features(training_set)
-training_targets = preprocess_targets(training_set)
-
-# Choose the last 5000 (out of 17000) examples for validation.
-validation_examples = preprocess_features(validation_set)
-validation_targets = preprocess_targets(validation_set)
-
-# Double-check that we've done the right thing.
-#print("Training examples summary:")
-#print training_examples.describe()
-#print("Validation examples summary:")
-#print validation_examples.describe()
-
-#print("Training targets summary:")
-#print training_targets.describe()
-#print("Validation targets summary:")
-#print validation_targets.describe()
 
 def construct_feature_columns(input_features):
   """Construct the TensorFlow Feature Columns.
@@ -112,6 +90,7 @@ def my_input_fn(features, targets, batch_size=10, shuffle=True, num_epochs=None)
     return features, labels
 
 def train_linear_classifier_model(
+    locus,
     learning_rate,
     steps,
     batch_size,
@@ -203,12 +182,14 @@ def train_linear_classifier_model(
   plt.plot(training_log_losses, label="training")
   plt.plot(validation_log_losses, label="validation")
   plt.legend()
-  plt.savefig('/home/upload/msi_project/ML/MSI-06/loss.png')
+  plt.savefig('/home/upload/msi_project/ML/%s/loss.png' % locus)
   plt.clf()
   return linear_classifier
 
 def run_test(params):
+  print params[4]
   linear_classifier = train_linear_classifier_model(
+            locus=params[4],
             learning_rate=params[0],
             steps=params[1],
             batch_size=params[2],
@@ -248,9 +229,9 @@ def run_test(params):
   plt.ylabel('True Positive Rate (Sensitivity)')
   plt.xlabel('False Positive Rate (1 - Specificity)')
   _ = plt.legend(loc=2)
-  plt.savefig('/home/upload/msi_project/ML/MSI-06/roc.png')
+  plt.savefig('/home/upload/msi_project/ML/%s/roc.png' % locus)
   plt.clf()
-  with open('/home/upload/msi_project/ML/MSI-06/hyperparameters.txt', 'a') as f:
+  with open('/home/upload/msi_project/ML/%s/hyperparameters.txt' % locus, 'a') as f:
     f.write(str(in_learning_rate) + '\t' +
             str(in_steps) + '\t' +		 
             str(in_batch_size) + '\t' +
@@ -264,16 +245,33 @@ def run_test(params):
   for name in names:
     print name 
   for value in values:
-    print value	
+    print value
 
 
-in_learning_rate = 0.005
-in_steps = 5000000
+
+
+locus = 'MSI-14'
+
+training_set = pd.read_csv("/home/upload/msi_project/ML/%s/training_set_df.txt" % locus, sep="\t")
+validation_set = pd.read_csv("/home/upload/msi_project/ML/%s/validation_set_df.txt" % locus, sep="\t")
+# Preprocess training examples and targets.
+training_examples = preprocess_features(training_set)
+training_targets = preprocess_targets(training_set)
+
+# Preprocess validation examples and targets
+validation_examples = preprocess_features(validation_set)
+validation_targets = preprocess_targets(validation_set)
+ 
+in_learning_rate = 0.01
+in_steps = 50000
 in_batch_size = 50
-regularization_strength = 2.0
+regularization_strength = 0
 
-params=[in_learning_rate, in_steps, in_batch_size, regularization_strength]
+params=[in_learning_rate, in_steps, in_batch_size, regularization_strength, locus]
 run_test(params)
+
+
+
 
 '''
 w_al = -.1977892
