@@ -101,7 +101,7 @@ test_set = '/home/upload/msi_project/tcga_bam/tumor_bams/ml_set/test_set'
 
 setlist = [training_set, validation_set]
 
-loci = ['BAT-26', 'MSI-07', 'MSI-09', 'H-06', 'MSI-06', 'MSI-04', 'HSPH1-T17', 'MSI-14', 'MSI-03']
+loci = ['BAT-26', 'MSI-07', 'MSI-09', 'H-06', 'MSI-06', 'MSI-04', 'HSPH1-T17']
 
 weights = {}
 
@@ -119,7 +119,7 @@ with open (infile, 'r') as f:
 
 def calling_function(directory, loci):
 	tp = tn = fp = fn = 0 
-	threshold = 0.5
+	threshold = 0.45
 	min_loci = 3
 	bamfiles = bamprocess.scan_files(directory)
 	correct_guesses = 0
@@ -239,7 +239,7 @@ def calc_prob(locus, avg_len, dist_mode, num_lens, stdev):
   prob = 1 / (1 + pow(2.718281, yhat))
   return prob	
 
-calling_function(validation_set, loci)
+calling_function(test_set, loci)
 
 
 '''

@@ -25,10 +25,8 @@ def preprocess_features(locus_df):
     synthetic features (if created).
   """
   selected_features = locus_df[
-    ["average_length",
-     "num_lengths",
-     "stdev",
-     "dist_mode"]]
+    ['MSI-11_avg_len','MSI-11_num_lens','MSI-11_stdev','MSI-11_dist_mode','MSI-14_avg_len','MSI-14_num_lens','MSI-14_stdev','MSI-14_dist_mode','H-10_avg_len','H-10_num_lens','H-10_stdev','H-10_dist_mode','HSPH1-T17_avg_len','HSPH1-T17_num_lens','HSPH1-T17_stdev','HSPH1-T17_dist_mode','BAT-26_avg_len','BAT-26_num_lens','BAT-26_stdev','BAT-26_dist_mode','BAT-25_avg_len','BAT-25_num_lens','BAT-25_stdev','BAT-25_dist_mode','MSI-04_avg_len','MSI-04_num_lens','MSI-04_stdev','MSI-04_dist_mode','MSI-06_avg_len','MSI-06_num_lens','MSI-06_stdev','MSI-06_dist_mode','MSI-07_avg_len','MSI-07_num_lens','MSI-07_stdev','MSI-07_dist_mode','MSI-01_avg_len','MSI-01_num_lens','MSI-01_stdev','MSI-01_dist_mode','MSI-03_avg_len','MSI-03_num_lens','MSI-03_stdev','MSI-03_dist_mode','MSI-09_avg_len','MSI-09_num_lens','MSI-09_stdev','MSI-09_dist_mode','H-09_avg_len','H-09_num_lens','H-09_stdev','H-09_dist_mode','H-08_avg_len','H-08_num_lens','H-08_stdev','H-08_dist_mode','H-01_avg_len','H-01_num_lens','H-01_stdev','H-01_dist_mode','H-03_avg_len','H-03_num_lens','H-03_stdev','H-03_dist_mode','H-02_avg_len','H-02_num_lens','H-02_stdev','H-02_dist_mode','H-05_avg_len','H-05_num_lens','H-05_stdev','H-05_dist_mode','H-04_avg_len','H-04_num_lens','H-04_stdev','H-04_dist_mode','H-07_avg_len','H-07_num_lens','H-07_stdev','H-07_dist_mode','H-06_avg_len','H-06_num_lens','H-06_stdev','H-06_dist_mode']
+    ]
   processed_features = selected_features.copy()
  
   # Create a synthetic feature if desired.
@@ -90,7 +88,6 @@ def my_input_fn(features, targets, batch_size=10, shuffle=True, num_epochs=None)
     return features, labels
 
 def train_linear_classifier_model(
-    locus,
     learning_rate,
     steps,
     batch_size,
@@ -126,7 +123,7 @@ def train_linear_classifier_model(
   steps_per_period = steps / periods
   
   # Create a linear classifier object.
-  my_optimizer = tf.train.FtrlOptimizer(learning_rate=learning_rate, l2_regularization_strength=regularization_strength)
+  my_optimizer = tf.train.FtrlOptimizer(learning_rate=learning_rate, l1_regularization_strength=regularization_strength)
   my_optimizer = tf.contrib.estimator.clip_gradients_by_norm(my_optimizer, 5.0)
   linear_classifier = tf.estimator.LinearClassifier(
       feature_columns=construct_feature_columns(training_examples),
@@ -182,14 +179,12 @@ def train_linear_classifier_model(
   plt.plot(training_log_losses, label="training")
   plt.plot(validation_log_losses, label="validation")
   plt.legend()
-  plt.savefig('/home/upload/msi_project/ML/%s/loss.png' % locus)
+  plt.savefig('/home/upload/msi_project/ML/88_dim_loss.png')
   plt.clf()
   return linear_classifier
 
 def run_test(params):
-  print params[4]
   linear_classifier = train_linear_classifier_model(
-            locus=params[4],
             learning_rate=params[0],
             steps=params[1],
             batch_size=params[2],
@@ -229,9 +224,9 @@ def run_test(params):
   plt.ylabel('True Positive Rate (Sensitivity)')
   plt.xlabel('False Positive Rate (1 - Specificity)')
   _ = plt.legend(loc=2)
-  plt.savefig('/home/upload/msi_project/ML/%s/roc.png' % locus)
+  plt.savefig('/home/upload/msi_project/ML/88_dim_roc.png')
   plt.clf()
-  with open('/home/upload/msi_project/ML/%s/hyperparameters.txt' % locus, 'a') as f:
+  with open('/home/upload/msi_project/ML/88_dim_hyperparameters.txt', 'a') as f:
     f.write(str(in_learning_rate) + '\t' +
             str(in_steps) + '\t' +		 
             str(in_batch_size) + '\t' +
@@ -242,18 +237,14 @@ def run_test(params):
 
   names = linear_classifier.get_variable_names()
   values = [linear_classifier.get_variable_value(x) for x in names]
-  for name in names:
-    print name 
-  for value in values:
-    print value
+
+
+  return names, values
 
 
 
-
-locus = 'MSI-14'
-
-training_set = pd.read_csv("/home/upload/msi_project/ML/%s/training_set_df.txt" % locus, sep="\t")
-validation_set = pd.read_csv("/home/upload/msi_project/ML/%s/validation_set_df.txt" % locus, sep="\t")
+training_set = pd.read_csv("/home/upload/msi_project/ML/training_set_full_EDITED.txt", sep="\t")
+validation_set = pd.read_csv("/home/upload/msi_project/ML/validation_set_full_EDITED.txt", sep="\t")
 # Preprocess training examples and targets.
 training_examples = preprocess_features(training_set)
 training_targets = preprocess_targets(training_set)
@@ -262,15 +253,22 @@ training_targets = preprocess_targets(training_set)
 validation_examples = preprocess_features(validation_set)
 validation_targets = preprocess_targets(validation_set)
  
-in_learning_rate = 0.01
-in_steps = 50000
-in_batch_size = 50
-regularization_strength = 0
+in_learning_rate = 0.001
+in_steps = 300000
+in_batch_size = 10
+regularization_strength = 1
 
-params=[in_learning_rate, in_steps, in_batch_size, regularization_strength, locus]
-run_test(params)
+params=[in_learning_rate, in_steps, in_batch_size, regularization_strength]
+names, values = run_test(params)
 
+weights = zip(names, values)
 
+outfile = '/home/upload/msi_project/ML/%d_%f_%d_%d_model_weights.txt' % (in_steps, in_learning_rate, in_batch_size, regularization_strength)
+
+with open(outfile, 'w') as f:
+  for weight in weights:
+    if weight[0].endswith('weights'):
+    	f.write(str(weight[0]) + '\t' + str(weight[1]) + '\n')
 
 
 '''
