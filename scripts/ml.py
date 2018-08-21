@@ -24,9 +24,14 @@ def preprocess_features(locus_df):
     A DataFrame that contains the features to be used for the model, including
     synthetic features (if created).
   """
-  selected_features = locus_df[
-    ['MSI-11_avg_len','MSI-11_num_lens','MSI-11_stdev','MSI-11_dist_mode','MSI-14_avg_len','MSI-14_num_lens','MSI-14_stdev','MSI-14_dist_mode','H-10_avg_len','H-10_num_lens','H-10_stdev','H-10_dist_mode','HSPH1-T17_avg_len','HSPH1-T17_num_lens','HSPH1-T17_stdev','HSPH1-T17_dist_mode','BAT-26_avg_len','BAT-26_num_lens','BAT-26_stdev','BAT-26_dist_mode','BAT-25_avg_len','BAT-25_num_lens','BAT-25_stdev','BAT-25_dist_mode','MSI-04_avg_len','MSI-04_num_lens','MSI-04_stdev','MSI-04_dist_mode','MSI-06_avg_len','MSI-06_num_lens','MSI-06_stdev','MSI-06_dist_mode','MSI-07_avg_len','MSI-07_num_lens','MSI-07_stdev','MSI-07_dist_mode','MSI-01_avg_len','MSI-01_num_lens','MSI-01_stdev','MSI-01_dist_mode','MSI-03_avg_len','MSI-03_num_lens','MSI-03_stdev','MSI-03_dist_mode','MSI-09_avg_len','MSI-09_num_lens','MSI-09_stdev','MSI-09_dist_mode','H-09_avg_len','H-09_num_lens','H-09_stdev','H-09_dist_mode','H-08_avg_len','H-08_num_lens','H-08_stdev','H-08_dist_mode','H-01_avg_len','H-01_num_lens','H-01_stdev','H-01_dist_mode','H-03_avg_len','H-03_num_lens','H-03_stdev','H-03_dist_mode','H-02_avg_len','H-02_num_lens','H-02_stdev','H-02_dist_mode','H-05_avg_len','H-05_num_lens','H-05_stdev','H-05_dist_mode','H-04_avg_len','H-04_num_lens','H-04_stdev','H-04_dist_mode','H-07_avg_len','H-07_num_lens','H-07_stdev','H-07_dist_mode','H-06_avg_len','H-06_num_lens','H-06_stdev','H-06_dist_mode']
-    ]
+  selected_features = locus_df[['MSI-11_avg_len','MSI-11_num_lens','MSI-11_stdev','MSI-11_dist_mode','MSI-14_avg_len','MSI-14_num_lens','MSI-14_stdev','MSI-14_dist_mode','H-10_avg_len','H-10_num_lens','H-10_stdev','H-10_dist_mode','HSPH1-T17_avg_len','HSPH1-T17_num_lens','HSPH1-T17_stdev','HSPH1-T17_dist_mode','BAT-26_avg_len','BAT-26_num_lens','BAT-26_stdev','BAT-26_dist_mode','BAT-25_avg_len','BAT-25_num_lens','BAT-25_stdev','BAT-25_dist_mode','MSI-04_avg_len','MSI-04_num_lens','MSI-04_stdev','MSI-04_dist_mode','MSI-06_avg_len','MSI-06_num_lens','MSI-06_stdev','MSI-06_dist_mode','MSI-07_avg_len','MSI-07_num_lens','MSI-07_stdev','MSI-07_dist_mode','MSI-01_avg_len','MSI-01_num_lens','MSI-01_stdev','MSI-01_dist_mode','MSI-03_avg_len','MSI-03_num_lens','MSI-03_stdev','MSI-03_dist_mode','MSI-09_avg_len','MSI-09_num_lens','MSI-09_stdev','MSI-09_dist_mode','H-09_avg_len','H-09_num_lens','H-09_stdev','H-09_dist_mode','H-08_avg_len','H-08_num_lens','H-08_stdev','H-08_dist_mode','H-01_avg_len','H-01_num_lens','H-01_stdev','H-01_dist_mode','H-03_avg_len','H-03_num_lens','H-03_stdev','H-03_dist_mode','H-02_avg_len','H-02_num_lens','H-02_stdev','H-02_dist_mode','H-05_avg_len','H-05_num_lens','H-05_stdev','H-05_dist_mode','H-04_avg_len','H-04_num_lens','H-04_stdev','H-04_dist_mode','H-07_avg_len','H-07_num_lens','H-07_stdev','H-07_dist_mode','H-06_avg_len','H-06_num_lens','H-06_stdev','H-06_dist_mode']]
+
+  #selected_features = locus_df
+  #selected_features.drop('bam_name')
+  #selected_features.drop('msi_status')
+  #selected_features.head()
+  
+
   processed_features = selected_features.copy()
  
   # Create a synthetic feature if desired.
@@ -119,7 +124,7 @@ def train_linear_classifier_model(
     A `LinearClassifier` object trained on the training data.
   """
 
-  periods = 10
+  periods = 20
   steps_per_period = steps / periods
   
   # Create a linear classifier object.
@@ -179,7 +184,7 @@ def train_linear_classifier_model(
   plt.plot(training_log_losses, label="training")
   plt.plot(validation_log_losses, label="validation")
   plt.legend()
-  plt.savefig('/home/upload/msi_project/ML/88_dim_loss.png')
+  plt.savefig('/home/upload/msi_project/ML/%d_%f_%d_%f_88_dim_loss.png' % (steps, learning_rate, batch_size, regularization_strength))
   plt.clf()
   return linear_classifier
 
@@ -224,7 +229,7 @@ def run_test(params):
   plt.ylabel('True Positive Rate (Sensitivity)')
   plt.xlabel('False Positive Rate (1 - Specificity)')
   _ = plt.legend(loc=2)
-  plt.savefig('/home/upload/msi_project/ML/88_dim_roc.png')
+  plt.savefig('/home/upload/msi_project/ML/%d_%f_%d_%f_88_dim_roc.png' % (params[1], params[0], params[2], params[3]))
   plt.clf()
   with open('/home/upload/msi_project/ML/88_dim_hyperparameters.txt', 'a') as f:
     f.write(str(in_learning_rate) + '\t' +
@@ -254,7 +259,7 @@ validation_examples = preprocess_features(validation_set)
 validation_targets = preprocess_targets(validation_set)
  
 in_learning_rate = 0.001
-in_steps = 300000
+in_steps = 200000
 in_batch_size = 10
 regularization_strength = 1
 

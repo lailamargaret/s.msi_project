@@ -7,7 +7,7 @@ UCEC_annotations = '/home/upload/msi_project/annotations/UCEC_annotations.txt'
 COAD_READ_annotations = '/home/upload/msi_project/annotations/COAD_READ_annotations.txt'
 cr_annotations = {}
 u_annotations = {}
-
+'''
 ucec_count = 0
 coadread_count = 0
 with open (UCEC_annotations, 'r') as f:
@@ -38,7 +38,7 @@ for filename in os.listdir('/home/upload/msi_project/tcga_bam/UCEC'):
 
 
 #generate a set of all bam files that have MSS MSIL or MSIH labels for machine learning
-'''
+
 coadread_count = 0
 ucec_count = 0
 total_count = 0
@@ -59,7 +59,7 @@ for filename in os.listdir(directory):
 print coadread_count
 print ucec_count
 print total_count
-'''
+
 mss_msi_fullset = '/home/upload/msi_project/tcga_bam/tumor_bams/ml_set/mss_msi_fullset'
 mode_train = '/home/upload/msi_project/tcga_bam/tumor_bams/ml_set/mode_train'
 training_set = '/home/upload/msi_project/tcga_bam/tumor_bams/ml_set/training_set'
@@ -105,34 +105,6 @@ for bamset in setlist:
 	count_mss_msi(bamset)
 	count_cancer_type(bamset)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-'''
 #list of all bam files in full set
 fullset = []
 for filename in os.listdir(mss_msi_fullset):
@@ -178,12 +150,7 @@ test_set = remaining
 for filename in test_set:
 	 subprocess.call(['cp', '/home/upload/msi_project/tcga_bam/tumor_bams/ml_set/mss_msi_fullset/' + filename, '/home/upload/msi_project/tcga_bam/tumor_bams/ml_set/test_set'])
          subprocess.call(['cp', '/home/upload/msi_project/tcga_bam/tumor_bams/ml_set/mss_msi_fullset/' + filename + '.bai', '/home/upload/msi_project/tcga_bam/tumor_bams/ml_set/test_set'])
-'''
 
-
-
-
-'''
 for filename in os.listdir('/home/upload/msi_project/tcga_bam/tumor_bams'):
 	if filename.endswith('.bam'):
 		bam_name = filename.replace('A.bam', '')
@@ -256,8 +223,6 @@ for filename in os.listdir(annotated):
 			filepath = '/home/upload/msi_project/tcga_bam/tumor_bams/annotated/%s' % filename
 			subprocess.call(['rm', filepath])
 
-'''
-'''
 ucec_bams = []
 coadread_bams =[]
 
@@ -291,3 +256,71 @@ print num_ucec
 print num_coadread
 
 '''
+
+origdir = '/home/upload/msi_project/tcga_bam/tumor_bams/ml_set/test_set/'
+valfile = '/home/upload/msi_project/ML/test_set_full_EDITED.txt'
+editeddir = '/home/upload/msi_project/tcga_bam/tumor_bams/ml_set/test_set/edited'
+
+bams = []
+bais = []
+with open (valfile, 'r') as f:
+	for line in f:
+		if line.startswith('bam') or line.startswith('#'):
+			continue
+		bam_name = line.split('\t')[0] + 'A.bam'
+		bai_name = bam_name + '.bai' 
+
+		bams.append(bam_name)
+		bais.append(bai_name)
+
+for bam in bams:
+	subprocess.call(['cp', origdir + bam, editeddir])
+
+for bam in bais:
+	subprocess.call(['cp', origdir + bam, editeddir])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
