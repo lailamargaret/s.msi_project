@@ -102,7 +102,8 @@ mode_train = '/home/upload/msi_project/tcga_bam/tumor_bams/ml_set/mode_train'
 training_set = '/home/upload/msi_project/tcga_bam/tumor_bams/ml_set/training_set'
 validation_set = '/home/upload/msi_project/tcga_bam/tumor_bams/ml_set/validation_set'
 test_set = '/home/upload/msi_project/tcga_bam/tumor_bams/ml_set/test_set'
-
+cr_dir = '/home/upload/msi_project/tcga_bam/COAD-READ'
+u_dir = '/home/upload/msi_project/tcga_bam/UCEC'
 
 
 #--------------------------------------------------- Current ----------------------------------------------------------------#
@@ -117,7 +118,7 @@ def get_weights(infile):
   return weights
 
 
-def three_part_calling_function(directory, loci):
+def calling_function(directory, loci):
 	tp = tn = fp = fn = 0 
 	upper_threshold = 0.6
 	lower_threshold = 0.4
@@ -125,6 +126,7 @@ def three_part_calling_function(directory, loci):
 	bamfiles = bamprocess.scan_files(directory)
 	correct_guesses = 0
 	total_files = 0
+	scores = {}
 	msi_scores = [] 
 	mss_scores = []
 	for bam in bamfiles:
@@ -174,6 +176,9 @@ def three_part_calling_function(directory, loci):
 	
 		#prob = calc_prob(locus, avg_length, dist_mode, num_lengths, stdev) 
 		prob = calc_prob(weights, features)
+		
+		scores[bam_name] = prob
+		
 		if msi_status:
 			msi_scores.append(prob)
 		else:
@@ -235,7 +240,7 @@ def three_part_calling_function(directory, loci):
 			fn += 1
 		elif guessed_status == 0 and msi_status == 0:
 			tn += 1
-
+	
 	print 'Summary:'
 	print 'Loci examined: ' + ('\n'.join(loci)) 
 	print 'Upper threshold: %f' % upper_threshold
@@ -258,7 +263,7 @@ def three_part_calling_function(directory, loci):
 	while i < 1.05:
 		bins.append(i)
 		i += 0.05
-
+	'''
 	plt.hist([msi_scores, mss_scores], bins = bins, color = ['red', 'blue'], label = ['MSI', 'MSS'])
         plt.title('Model-Derrived Probabilities: p(MSI)')
 	plt.legend(loc = 'best')
@@ -267,7 +272,9 @@ def three_part_calling_function(directory, loci):
         saveloc = '/home/upload/msi_project/ML/probability_distribution'
         plt.savefig(saveloc)
         plt.clf()
- 
+	'''
+	return scores 
+
 def calc_prob(weights, inputs):
   keys = list(inputs.keys())
   yhat = 0
@@ -282,14 +289,94 @@ def calc_prob(weights, inputs):
   prob = 1 / (1 + pow(2.718281, yhat))
   return prob	
 
+def make_bam_list(lst):
+	new_lst = []
+	for each in lst:
+		edited = each.split('/')[-1].replace('A.bam', '')
+		new_lst.append(edited)
+
+	return new_lst
 #------------------------------------------------------------ main ---------------------------------------------------------------#
+_CR_BAMS = make_bam_list(bamprocess.scan_files('/home/upload/msi_project/tcga_bam/COAD-READ'))
+_U_BAMS = make_bam_list(bamprocess.scan_files('/home/upload/msi_project/tcga_bam/UCEC'))
 
 val_directory = '/home/upload/msi_project/tcga_bam/tumor_bams/ml_set/test_set/edited'
 loci = ['MSI-11', 'MSI-14', 'H-10', 'HSPH1-T17', 'BAT-26', 'BAT-25', 'MSI-04', 'MSI-06', 'MSI-07', 'MSI-01', 'MSI-03', 'MSI-09', 'H-09', 'H-08', 'H-01', 'H-03', 'H-02', 'H-04', 'H-07', 'H-06', 'H-05']
 
 infile = '/home/upload/msi_project/ML/100000_0.001000_10_1_model_weights.txt'
 weights = get_weights(infile)
-three_part_calling_function(val_directory, loci)
+scores = calling_function(val_directory, loci)
+
+#print scores
+
+cr_stable = []
+cr_unstable = []
+u_stable = []
+u_unstable = []
+
+for key in scores:
+	print key
+	cr = 0
+	u = 0
+
+	if key in _CR_BAMS:
+		cr += 1
+		if _ANNOTATIONS[key] == 'MSS':
+			cr_stable.append(scores[key])
+			print key
+		elif _ANNOTATIONS[key] == 'MSI':
+			cr_unstable.append(scores[key])
+			print key
+	elif key in _U_BAMS:
+		u += 1
+		if _ANNOTATIONS[key] == 'MSS':
+			u_stable.append(scores[key])
+			print key
+		elif _ANNOTATIONS[key] == 'MSI':
+			u_unstable.append(scores[key])
+			print key
+	
+#print cr 
+#print u
+print len(u_stable)
+print len(u_unstable)
+print len(cr_stable)
+print len(cr_unstable)
+
+bins = []
+i = 0.0
+while i < 1.05:
+	bins.append(i)
+	i += 0.05
+
+plt.hist([u_unstable, u_stable], bins = bins, color = ['darkorange', 'navajowhite'], label = ['MSI', 'MSS'])
+plt.title('Model-Derrived Probabilities: p(MSI)')
+plt.legend(loc = 'best')
+plt.xlabel = ('p(MSI)')
+plt.ylabel('Number of BAM files')
+saveloc = '/home/upload/msi_project/ML/UCEC_probability_distribution'
+plt.savefig(saveloc)
+plt.clf()
+
+plt.hist([cr_unstable, cr_stable], bins = bins, color = ['forestgreen', 'yellowgreen'], label = ['MSI', 'MSS'])
+plt.title('Model-Derrived Probabilities: p(MSI)')
+plt.legend(loc = 'best')
+plt.xlabel = ('p(MSI)')
+plt.ylabel('Number of BAM files')
+saveloc = '/home/upload/msi_project/ML/COAD-READ_probability_distribution'
+plt.savefig(saveloc)
+plt.clf()
+
+
+
+
+
+
+
+
+
+
+
 
 
 
