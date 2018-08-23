@@ -395,7 +395,7 @@ def histogram_features_calling_function(directory, loci):
 	plt.legend(loc = 'best')
         plt.xlabel = ('p(MSI)')
         plt.ylabel('Number of BAM files')
-        saveloc = '/home/upload/msi_project/ML/histogram_features/probability_distribution'
+        saveloc = '/home/upload/msi_project/ML/histogram_features/top_9/probability_distribution'
         plt.savefig(saveloc)
         plt.clf()
 	return scores 
@@ -432,13 +432,13 @@ top_7 = ['BAT-26', 'MSI-07', 'MSI-09', 'H-06', 'MSI-06', 'MSI-04', 'HSPH1-T17']
 top_9 = ['BAT-26', 'MSI-07', 'MSI-09', 'H-06', 'MSI-06', 'MSI-04', 'HSPH1-T17', 'H-02', 'H-03']
 
 
-infile = '/home/upload/msi_project/ML/histogram_features/200000_0.001000_10_1_model_weights.txt'
+infile = '/home/upload/msi_project/ML/histogram_features/top_9/200000_0.001000_10_1_model_weights.txt'
 #infile_2 = '/home/upload/msi_project/ML/100000_0.001000_10_1_model_weights.txt'
 weights = get_weights(infile)
 #scores = calling_function(edited_test, loci)
-scores = histogram_features_calling_function(test_directory, top_7)
+scores = histogram_features_calling_function(test_directory, top_9)
 print scores
-'''
+
 cr_stable = []
 cr_unstable = []
 u_stable = []
@@ -487,7 +487,7 @@ plt.savefig(saveloc)
 plt.clf()
 
 
-'''
+
 
 
 
