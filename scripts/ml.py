@@ -15,7 +15,14 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 pd.options.display.max_rows = 10
 pd.options.display.float_format = '{:.1f}'.format
 
-def preprocess_features(locus_df):
+def feature_list(infile):
+        feature_list = []
+        with open(infile, 'r') as f:
+                for line in f:
+                        feature_list.append(line.replace('\n', ''))
+        return feature_list
+
+def preprocess_features(locus_df, feature_list):
   """Prepares input features from a locus data set.
 
   Args:
@@ -24,13 +31,9 @@ def preprocess_features(locus_df):
     A DataFrame that contains the features to be used for the model, including
     synthetic features (if created).
   """
-  selected_features = locus_df[['MSI-11_avg_len','MSI-11_num_lens','MSI-11_stdev','MSI-11_dist_mode','MSI-14_avg_len','MSI-14_num_lens','MSI-14_stdev','MSI-14_dist_mode','H-10_avg_len','H-10_num_lens','H-10_stdev','H-10_dist_mode','HSPH1-T17_avg_len','HSPH1-T17_num_lens','HSPH1-T17_stdev','HSPH1-T17_dist_mode','BAT-26_avg_len','BAT-26_num_lens','BAT-26_stdev','BAT-26_dist_mode','BAT-25_avg_len','BAT-25_num_lens','BAT-25_stdev','BAT-25_dist_mode','MSI-04_avg_len','MSI-04_num_lens','MSI-04_stdev','MSI-04_dist_mode','MSI-06_avg_len','MSI-06_num_lens','MSI-06_stdev','MSI-06_dist_mode','MSI-07_avg_len','MSI-07_num_lens','MSI-07_stdev','MSI-07_dist_mode','MSI-01_avg_len','MSI-01_num_lens','MSI-01_stdev','MSI-01_dist_mode','MSI-03_avg_len','MSI-03_num_lens','MSI-03_stdev','MSI-03_dist_mode','MSI-09_avg_len','MSI-09_num_lens','MSI-09_stdev','MSI-09_dist_mode','H-09_avg_len','H-09_num_lens','H-09_stdev','H-09_dist_mode','H-08_avg_len','H-08_num_lens','H-08_stdev','H-08_dist_mode','H-01_avg_len','H-01_num_lens','H-01_stdev','H-01_dist_mode','H-03_avg_len','H-03_num_lens','H-03_stdev','H-03_dist_mode','H-02_avg_len','H-02_num_lens','H-02_stdev','H-02_dist_mode','H-05_avg_len','H-05_num_lens','H-05_stdev','H-05_dist_mode','H-04_avg_len','H-04_num_lens','H-04_stdev','H-04_dist_mode','H-07_avg_len','H-07_num_lens','H-07_stdev','H-07_dist_mode','H-06_avg_len','H-06_num_lens','H-06_stdev','H-06_dist_mode']]
-
-  #selected_features = locus_df
-  #selected_features.drop('bam_name')
-  #selected_features.drop('msi_status')
-  #selected_features.head()
+  #selected_features = locus_df[['MSI-11_avg_len','MSI-11_num_lens','MSI-11_stdev','MSI-11_dist_mode','MSI-14_avg_len','MSI-14_num_lens','MSI-14_stdev','MSI-14_dist_mode','H-10_avg_len','H-10_num_lens','H-10_stdev','H-10_dist_mode','HSPH1-T17_avg_len','HSPH1-T17_num_lens','HSPH1-T17_stdev','HSPH1-T17_dist_mode','BAT-26_avg_len','BAT-26_num_lens','BAT-26_stdev','BAT-26_dist_mode','BAT-25_avg_len','BAT-25_num_lens','BAT-25_stdev','BAT-25_dist_mode','MSI-04_avg_len','MSI-04_num_lens','MSI-04_stdev','MSI-04_dist_mode','MSI-06_avg_len','MSI-06_num_lens','MSI-06_stdev','MSI-06_dist_mode','MSI-07_avg_len','MSI-07_num_lens','MSI-07_stdev','MSI-07_dist_mode','MSI-01_avg_len','MSI-01_num_lens','MSI-01_stdev','MSI-01_dist_mode','MSI-03_avg_len','MSI-03_num_lens','MSI-03_stdev','MSI-03_dist_mode','MSI-09_avg_len','MSI-09_num_lens','MSI-09_stdev','MSI-09_dist_mode','H-09_avg_len','H-09_num_lens','H-09_stdev','H-09_dist_mode','H-08_avg_len','H-08_num_lens','H-08_stdev','H-08_dist_mode','H-01_avg_len','H-01_num_lens','H-01_stdev','H-01_dist_mode','H-03_avg_len','H-03_num_lens','H-03_stdev','H-03_dist_mode','H-02_avg_len','H-02_num_lens','H-02_stdev','H-02_dist_mode','H-05_avg_len','H-05_num_lens','H-05_stdev','H-05_dist_mode','H-04_avg_len','H-04_num_lens','H-04_stdev','H-04_dist_mode','H-07_avg_len','H-07_num_lens','H-07_stdev','H-07_dist_mode','H-06_avg_len','H-06_num_lens','H-06_stdev','H-06_dist_mode']]
   
+  selected_features = locus_df[feature_list]
 
   processed_features = selected_features.copy()
  
@@ -184,7 +187,7 @@ def train_linear_classifier_model(
   plt.plot(training_log_losses, label="training")
   plt.plot(validation_log_losses, label="validation")
   plt.legend()
-  plt.savefig('/home/upload/msi_project/ML/%d_%f_%d_%f_88_dim_loss.png' % (steps, learning_rate, batch_size, regularization_strength))
+  plt.savefig('/home/upload/msi_project/ML/histogram_features/top_9/%d_%f_%d_%f_loss.png' % (steps, learning_rate, batch_size, regularization_strength))
   plt.clf()
   return linear_classifier
 
@@ -229,9 +232,9 @@ def run_test(params):
   plt.ylabel('True Positive Rate (Sensitivity)')
   plt.xlabel('False Positive Rate (1 - Specificity)')
   _ = plt.legend(loc=2)
-  plt.savefig('/home/upload/msi_project/ML/%d_%f_%d_%f_88_dim_roc.png' % (params[1], params[0], params[2], params[3]))
+  plt.savefig('/home/upload/msi_project/ML/histogram_features/top_9/%d_%f_%d_%f_roc.png' % (params[1], params[0], params[2], params[3]))
   plt.clf()
-  with open('/home/upload/msi_project/ML/88_dim_hyperparameters.txt', 'a') as f:
+  with open('/home/upload/msi_project/ML/histogram_features/top_9/hyperparameters.txt', 'a') as f:
     f.write(str(in_learning_rate) + '\t' +
             str(in_steps) + '\t' +		 
             str(in_batch_size) + '\t' +
@@ -246,16 +249,16 @@ def run_test(params):
 
   return names, values
 
+feature_list = feature_list('/home/upload/msi_project/ML/histogram_features/top_9/top_9_histogram_features.txt')
 
-
-training_set = pd.read_csv("/home/upload/msi_project/ML/training_set_full_EDITED.txt", sep="\t")
-validation_set = pd.read_csv("/home/upload/msi_project/ML/validation_set_full_EDITED.txt", sep="\t")
+training_set = pd.read_csv("/home/upload/msi_project/ML/histogram_features/top_9/training_set_top_9_lengths_full.txt", sep="\t")
+validation_set = pd.read_csv("/home/upload/msi_project/ML/histogram_features/top_9/validation_set_top_9_lengths_full.txt", sep="\t")
 # Preprocess training examples and targets.
-training_examples = preprocess_features(training_set)
+training_examples = preprocess_features(training_set, feature_list)
 training_targets = preprocess_targets(training_set)
 
 # Preprocess validation examples and targets
-validation_examples = preprocess_features(validation_set)
+validation_examples = preprocess_features(validation_set, feature_list)
 validation_targets = preprocess_targets(validation_set)
  
 in_learning_rate = 0.001
@@ -268,7 +271,7 @@ names, values = run_test(params)
 
 weights = zip(names, values)
 
-outfile = '/home/upload/msi_project/ML/%d_%f_%d_%d_model_weights.txt' % (in_steps, in_learning_rate, in_batch_size, regularization_strength)
+outfile = '/home/upload/msi_project/ML/histogram_features/top_9/%d_%f_%d_%d_model_weights.txt' % (in_steps, in_learning_rate, in_batch_size, regularization_strength)
 
 with open(outfile, 'w') as f:
   for weight in weights:
