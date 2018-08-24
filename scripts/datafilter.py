@@ -1,3 +1,5 @@
+#contains a variety of different (unorganized!!) methods that have been used to separate bam files into new directories by characteristics such as MSI status or cancer type
+#also used to produce the randomly-generated datasets used in the machine learning algorithm
 import os 
 import subprocess
 import random

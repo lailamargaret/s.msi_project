@@ -1,4 +1,5 @@
-#count reads module
+#count reads module contains the function that pulls out the accepted runs for a given bam file and locus
+#also contains the fuzzy matching algorithm used to find partial matches in the flanking region
 import pysam
 import os
 import matplotlib
@@ -6,10 +7,10 @@ matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.patches as mpatches
-
-
 from constants import _MSI_LOCI, _QUALITY_THRESHOLDS
 import lstproc
+
+
 def approximate_match(t, p, maxdist, return_mm = False):
         """
         Brief: find the closest match to substring p within t with a maximum edit distance maxdist

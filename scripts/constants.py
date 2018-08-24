@@ -1,5 +1,6 @@
-#global variables to be imported
+#BRIEF: Produces lists and dicts for use in other functions
 
+#------------------------------------------------------------ Current -------------------------------------------------------------------------------#
 def get_msi_loci():
         """
         Brief: Creates a dictionary storing information about each msi locus
@@ -18,11 +19,12 @@ def get_msi_loci():
         return msi_loci
 
 def get_msi_annotations():
-        '''
+        """
         Brief: Generate a dict containing all bam files from txt file with their msi status
+	       NOTE: Saves all 'MSI-L' cases as 'MSS', 'MSI-H' as 'MSI'
         Args: none
         Return: dict
-        '''
+        """
         msi_annotations = {}
         annotations_file = '/home/upload/msi_project/annotations/UCEC_annotations.txt'
         with open (annotations_file, 'r') as f:
@@ -55,6 +57,11 @@ def get_msi_annotations():
         return msi_annotations
 
 def get_full_annotations():
+	"""
+	Brief: Generates a dict containing the RAW msi status from annotations files
+	Args: none
+	Returns: dict
+	"""
 	full_annotations = {}
 	annotations_file = '/home/upload/msi_project/annotations/UCEC_annotations.txt'
 	with open(annotations_file, 'r') as f:
@@ -73,10 +80,38 @@ def get_full_annotations():
 			msi_status = fields[20]
 			full_annotations[fields[4]] = msi_status
 	return full_annotations
+
+def get_ml_modes():
+	"""
+	Brief: Uses the special ML mode training set to determine the mode of a dataset using a defined mode calling function
+	Args: None
+	Return: dict
+	"""
+        mlmodes = '/home/upload/msi_project/ML/modes.txt'
+        ml_modes = {}
+        with open(mlmodes, 'r') as f:
+                lines = f.readlines()
+
+                fields1 = lines[0].split('\t')
+                fields1.pop(0)
+
+                fields2 = lines[1].split('\t')
+                fields2.pop(0)
+
+                for i in range(len(fields1)):
+                        fields1[i] = fields1[i].replace('\n', '')
+                        fields2[i] = fields2[i].replace('\n', '')
+                        ml_modes[fields1[i]] = fields2[i]
+        return ml_modes
 		
 	
+#-------------------------------------------------- Archive ----------------------------------------------------------------#
 def get_mss_locus_data():
-
+	"""
+	Brief: Stores the average standard deviation, standard deviation of the average standard dev, mode, average length, and standard deviation of a MSS training set to create features
+	Args: None
+	Return: dict
+	"""
         mss_input = '/home/upload/msi_project/diag_analysis/MSS_training_data.txt'
 
         #{'locus' : ['mean', 'stdev', 'mode']}
@@ -113,26 +148,11 @@ def get_mss_locus_data():
 			mss_locus_data[fields1[i]] = [fields2[i], fields3[i], fields4[i], fields5[i], fields6[i]]
         return mss_locus_data
 
-def get_ml_modes():
-	mlmodes = '/home/upload/msi_project/ML/modes.txt'
-	ml_modes = {}
-	with open(mlmodes, 'r') as f:
-		lines = f.readlines()
-		
-		fields1 = lines[0].split('\t')
-                fields1.pop(0)
-
-                fields2 = lines[1].split('\t')
-                fields2.pop(0)
-
-		for i in range(len(fields1)):
-                        fields1[i] = fields1[i].replace('\n', '')
-                        fields2[i] = fields2[i].replace('\n', '')
-			ml_modes[fields1[i]] = fields2[i]
-	return ml_modes	
-
+#-------------------------------------- Main ----------------------------------------------------------------------#
+#hard-coded quality thresholds for some non-homogenous loci
 _QUALITY_THRESHOLDS =  {'MSI-11': .25, 'MSI-12': .25, 'MSI-01': .5, 'BAT-25': .18}
 
+#populate the lsts and dicts of commonly used information
 _MSI_LOCI = get_msi_loci()
 _ANNOTATIONS = get_msi_annotations()
 _FULL_ANNOTATIONS = get_full_annotations()

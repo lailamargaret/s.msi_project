@@ -1,4 +1,4 @@
-#list processing module
+#list processing module containing utility functions used in other functions such as the count_reads module
 
 
 def avg_value(lst):

@@ -1,4 +1,5 @@
-##Code modified from Google's Machine Learning Crash Course
+#This script does the machine learning process and saves its results to multiple files
+#Code modified from Google's Machine Learning Crash Course
 from constants import _MSI_LOCI
 import math
 
@@ -16,24 +17,25 @@ pd.options.display.max_rows = 10
 pd.options.display.float_format = '{:.1f}'.format
 
 def feature_list(infile):
+	"""
+	Creates a list of features given an input file
+	"""
         feature_list = []
         with open(infile, 'r') as f:
                 for line in f:
                         feature_list.append(line.replace('\n', ''))
         return feature_list
 
-def preprocess_features(locus_df, feature_list):
-  """Prepares input features from a locus data set.
-
-  Args:
-    locus_df: A Pandas DataFrame expected to contain data
-  Returns:
+def preprocess_features(input_df, feature_list):
+  """Prepares input features from a data set.
+    Args:
+    input_df: A Pandas DataFrame expected to contain features
+    Returns:
     A DataFrame that contains the features to be used for the model, including
     synthetic features (if created).
   """
-  #selected_features = locus_df[['MSI-11_avg_len','MSI-11_num_lens','MSI-11_stdev','MSI-11_dist_mode','MSI-14_avg_len','MSI-14_num_lens','MSI-14_stdev','MSI-14_dist_mode','H-10_avg_len','H-10_num_lens','H-10_stdev','H-10_dist_mode','HSPH1-T17_avg_len','HSPH1-T17_num_lens','HSPH1-T17_stdev','HSPH1-T17_dist_mode','BAT-26_avg_len','BAT-26_num_lens','BAT-26_stdev','BAT-26_dist_mode','BAT-25_avg_len','BAT-25_num_lens','BAT-25_stdev','BAT-25_dist_mode','MSI-04_avg_len','MSI-04_num_lens','MSI-04_stdev','MSI-04_dist_mode','MSI-06_avg_len','MSI-06_num_lens','MSI-06_stdev','MSI-06_dist_mode','MSI-07_avg_len','MSI-07_num_lens','MSI-07_stdev','MSI-07_dist_mode','MSI-01_avg_len','MSI-01_num_lens','MSI-01_stdev','MSI-01_dist_mode','MSI-03_avg_len','MSI-03_num_lens','MSI-03_stdev','MSI-03_dist_mode','MSI-09_avg_len','MSI-09_num_lens','MSI-09_stdev','MSI-09_dist_mode','H-09_avg_len','H-09_num_lens','H-09_stdev','H-09_dist_mode','H-08_avg_len','H-08_num_lens','H-08_stdev','H-08_dist_mode','H-01_avg_len','H-01_num_lens','H-01_stdev','H-01_dist_mode','H-03_avg_len','H-03_num_lens','H-03_stdev','H-03_dist_mode','H-02_avg_len','H-02_num_lens','H-02_stdev','H-02_dist_mode','H-05_avg_len','H-05_num_lens','H-05_stdev','H-05_dist_mode','H-04_avg_len','H-04_num_lens','H-04_stdev','H-04_dist_mode','H-07_avg_len','H-07_num_lens','H-07_stdev','H-07_dist_mode','H-06_avg_len','H-06_num_lens','H-06_stdev','H-06_dist_mode']]
   
-  selected_features = locus_df[feature_list]
+  selected_features = input_df[feature_list]
 
   processed_features = selected_features.copy()
  
@@ -41,18 +43,18 @@ def preprocess_features(locus_df, feature_list):
   
   return processed_features
 
-def preprocess_targets(locus_df):
-  """Prepares target features (i.e., labels) from locus data set.
+def preprocess_targets(input_df):
+  """Prepares target features (i.e., labels) from data set.
 
   Args:
-    locus_df: A Pandas DataFrame expected to contain data
+    input_df: A Pandas DataFrame expected to contain data
   Returns:
     A DataFrame that contains the target feature.
   """
   output_targets = pd.DataFrame()
    
   # median_house_value is above a set threshold.
-  output_targets["msi_status"] = locus_df["msi_status"]
+  output_targets["msi_status"] = input_df["msi_status"]
   return output_targets
 
 
@@ -114,6 +116,7 @@ def train_linear_classifier_model(
     steps: A non-zero `int`, the total number of training steps. A training step
       consists of a forward and backward pass using a single batch.
     batch_size: A non-zero `int`, the batch size.
+    regularization_strength: A 'float', the strength of l1 regularization (currently does not work?)
     training_examples: A `DataFrame` containing one or more columns from
       dataframe to use as input features for training.
     training_targets: A `DataFrame` containing exactly one column from
@@ -192,6 +195,10 @@ def train_linear_classifier_model(
   return linear_classifier
 
 def run_test(params):
+  """
+  Calls train_linear_classifier given the list that contains the input
+  Creates ROC plot
+  """
   linear_classifier = train_linear_classifier_model(
             learning_rate=params[0],
             steps=params[1],
@@ -208,11 +215,6 @@ def run_test(params):
                                                   num_epochs=1, 
                                                   shuffle=False)
 
-  #validation_predictions = linear_classifier.predict(input_fn=predict_validation_input_fn)
-  #validation_predictions = np.array([item['predictions'][0] for item in validation_predictions])
-
-  #fig = plt.hist(validation_predictions)
-  #plt.savefig('/home/upload/msi_project/ML/MSI-06/prediction.png')
 
   evaluation_metrics = linear_classifier.evaluate(input_fn=predict_validation_input_fn)
 
@@ -220,6 +222,7 @@ def run_test(params):
   print("Accuracy on the validation set: %0.2f" % evaluation_metrics['accuracy'])
 
   validation_probabilities = linear_classifier.predict(input_fn=predict_validation_input_fn)
+
   # Get just the probabilities for the positive class.
   validation_probabilities = np.array([item['probabilities'][1] for item in validation_probabilities])
 
@@ -249,70 +252,40 @@ def run_test(params):
 
   return names, values
 
-feature_list = feature_list('/home/upload/msi_project/ML/histogram_features/top_9/top_9_histogram_features.txt')
+#--------------------------------------------------------------------- Main -------------------------------------------------------------#
 
+#Produce feature list for use in preprocessing step
+feature_list = feature_list('/home/upload/msi_project/ML/histogram_features/top_9/top_9_histogram_features.txt')
+#sets for preprocessing steps
 training_set = pd.read_csv("/home/upload/msi_project/ML/histogram_features/top_9/training_set_top_9_lengths_full.txt", sep="\t")
 validation_set = pd.read_csv("/home/upload/msi_project/ML/histogram_features/top_9/validation_set_top_9_lengths_full.txt", sep="\t")
 # Preprocess training examples and targets.
 training_examples = preprocess_features(training_set, feature_list)
 training_targets = preprocess_targets(training_set)
-
 # Preprocess validation examples and targets
 validation_examples = preprocess_features(validation_set, feature_list)
 validation_targets = preprocess_targets(validation_set)
  
+#set the hyperparameters
 in_learning_rate = 0.001
 in_steps = 200000
 in_batch_size = 10
 regularization_strength = 1
-
+#consolidate hyperparameters
 params=[in_learning_rate, in_steps, in_batch_size, regularization_strength]
+
+#train the model
 names, values = run_test(params)
 
+#save weights information
 weights = zip(names, values)
-
 outfile = '/home/upload/msi_project/ML/histogram_features/top_9/%d_%f_%d_%d_model_weights.txt' % (in_steps, in_learning_rate, in_batch_size, regularization_strength)
-
+#report the model-derrived weights to a file
 with open(outfile, 'w') as f:
   for weight in weights:
     if weight[0].endswith('weights'):
     	f.write(str(weight[0]) + '\t' + str(weight[1]) + '\n')
 
-
-'''
-w_al = -.1977892
-w_nl = .04553857
-w_sd = 1.1986442
-w_dm = 1.095933
-b = .25338435
-
-tc = 0
-fc = 0
-
-for i in range(len(validation_set)):
-  print i
-  w1 = float(validation_set['average_length'][i]) * w_al
-  w2 = float(validation_set['num_lengths'][i]) * w_nl
-  w3 = float(validation_set['stdev'][i]) * w_sd
-  w4 = float(validation_set['dist_mode'][i]) * w_dm
-  result = w1 + w2 + w3 + w4 + b
-  result = pow(2.71828, result * -1)
-  result = 1 / (1 + result)
-  print "calculated probability: %f" % result
-  known_status = validation_set['msi_status'][i] 
-  predstat = False
-  if result > .5:
-    predstat = True
-  print 'agree?: %s' % (predstat == known_status)
-  if predstat == known_status:
-    tc += 1
-  else:
-    fc += 1
-
-
-print tc
-print fc
-'''	
 
 
 

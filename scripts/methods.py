@@ -1,3 +1,4 @@
+#ARCHIVED: No longer used in any method.
 #methods for calculating statistical scores per bamfile/locus, reporting out
 from constants import _MSI_LOCI, _QUALITY_THRESHOLDS, _ANNOTATIONS, _MSS_LOCUS_DATA
 import count_reads
@@ -151,6 +152,9 @@ def report(bams, method, mismatch = 2, length = 7):
 
 
 def roc_curve(bamfiles, method, plot = False):
+	"""
+	Produces a ROC curve for a given method/bam file
+	"""
         if method == 'stdev':
                 method_no = 3
         elif method == 'dist_mode':
