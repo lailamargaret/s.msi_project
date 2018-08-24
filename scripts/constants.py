@@ -30,8 +30,10 @@ def get_msi_annotations():
                         fields = line.split('\t')
                         if fields[0] == 'Cancer Type Detailed':
                                 continue
-                        if fields[22] == 'MSI-L' or fields[22] == 'MSI-H':
-                                msi_status = 'MSI'
+                        if fields[22] == 'MSI-L' or fields[22] == 'MSS':
+                                msi_status = 'MSS'
+			if fields[22] == 'MSI-H':
+				msi_status = 'MSI'
                         else:
                                 msi_status = fields[22]
                         msi_annotations[fields[4]] = msi_status
@@ -42,14 +44,37 @@ def get_msi_annotations():
                         fields = line.split('\t')
                         if fields[0] == 'Cancer Type Detailed':
                                 continue
-                        if fields[20] == 'MSI-L' or fields[20] == 'MSI-H':
+                        if fields[20] == 'MSI-L' or fields[20] == 'MSS':
+                                msi_status = 'MSS'
+                        if fields[20] == 'MSI-H':
                                 msi_status = 'MSI'
-                        else:
-                                msi_status = fields[20]
+			else:
+				msi_status = fields[20]
                         msi_annotations[fields[4]] = msi_status
 
         return msi_annotations
 
+def get_full_annotations():
+	full_annotations = {}
+	annotations_file = '/home/upload/msi_project/annotations/UCEC_annotations.txt'
+	with open(annotations_file, 'r') as f:
+		for line in f:
+			fields = line.split('\t')
+			if fields[0] == 'Cancer Type Detailed':
+				continue
+			msi_status = fields[22]
+			full_annotations[fields[4]] = msi_status
+	annotations_file = '/home/upload/msi_project/annotations/COAD_READ_annotations.txt'
+	with open(annotations_file, 'r') as f:
+		for line in f:
+			fields = line.split('\t')
+			if fields[0] == 'Caner Type Detailed':
+				continue
+			msi_status = fields[20]
+			full_annotations[fields[4]] = msi_status
+	return full_annotations
+		
+	
 def get_mss_locus_data():
 
         mss_input = '/home/upload/msi_project/diag_analysis/MSS_training_data.txt'
@@ -110,6 +135,7 @@ _QUALITY_THRESHOLDS =  {'MSI-11': .25, 'MSI-12': .25, 'MSI-01': .5, 'BAT-25': .1
 
 _MSI_LOCI = get_msi_loci()
 _ANNOTATIONS = get_msi_annotations()
+_FULL_ANNOTATIONS = get_full_annotations()
 _MSS_LOCUS_DATA = get_mss_locus_data()
 _ML_MODES = get_ml_modes()
 

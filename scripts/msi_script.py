@@ -2,7 +2,7 @@
 import bamprocess
 import count_reads
 import methods
-from constants import _MSI_LOCI, _QUALITY_THRESHOLDS, _ANNOTATIONS, _MSS_LOCUS_DATA, _ML_MODES
+from constants import _MSI_LOCI, _QUALITY_THRESHOLDS, _ANNOTATIONS, _MSS_LOCUS_DATA, _ML_MODES, _FULL_ANNOTATIONS
 
 #imported modules
 from ortools.linear_solver import pywraplp
@@ -309,6 +309,8 @@ def histogram_features_calling_function(directory, loci):
 	correct_guesses = 0
 	total_files = 0
 	scores = {}
+	fn_bams = []
+	test_bams = []
 	msi_scores = [] 
 	mss_scores = []
 	for bam in bamfiles:
@@ -330,7 +332,7 @@ def histogram_features_calling_function(directory, loci):
 			continue
 		print 'Bam file: ' + bam_name	
 		prob = calc_prob(weights, features)
-		
+		test_bams.append(bam_name)
 		scores[bam_name] = prob
 		
 		if msi_status:
@@ -367,6 +369,7 @@ def histogram_features_calling_function(directory, loci):
 			fp += 1
 		elif guessed_status == 0 and msi_status == 1:
 			fn += 1
+			fn_bams.append(bam_name)
 		elif guessed_status == 0 and msi_status == 0:
 			tn += 1
 	
@@ -383,7 +386,6 @@ def histogram_features_calling_function(directory, loci):
 	print 'False neg: %d' % fn
 	print 'Sensitivity: %f' % (float(tp) / (tp + fn))
 	print 'Specificity: %f' % (float(tn) / (tn + fp))
-
 	bins = []
 	i = 0.0
 	while i < 1.05:
@@ -395,10 +397,10 @@ def histogram_features_calling_function(directory, loci):
 	plt.legend(loc = 'best')
         plt.xlabel = ('p(MSI)')
         plt.ylabel('Number of BAM files')
-        saveloc = '/home/upload/msi_project/ML/histogram_features/top_9/probability_distribution'
+        saveloc = '/home/upload/msi_project/ML/histogram_features/top_9/mss_adjusted_probability_distribution'
         plt.savefig(saveloc)
         plt.clf()
-	return scores 
+	return scores, test_bams 
 
 def calc_prob(weights, inputs):
   keys = list(inputs.keys())
@@ -436,8 +438,8 @@ infile = '/home/upload/msi_project/ML/histogram_features/top_9/200000_0.001000_1
 #infile_2 = '/home/upload/msi_project/ML/100000_0.001000_10_1_model_weights.txt'
 weights = get_weights(infile)
 #scores = calling_function(edited_test, loci)
-scores = histogram_features_calling_function(test_directory, top_9)
-print scores
+scores, test_bams = histogram_features_calling_function(test_directory, top_9)
+#print scores
 
 cr_stable = []
 cr_unstable = []
@@ -473,7 +475,7 @@ plt.title('Model-Derrived Probabilities: p(MSI)')
 plt.legend(loc = 'best')
 plt.xlabel = ('p(MSI)')
 plt.ylabel('Number of BAM files')
-saveloc = '/home/upload/msi_project/ML/9_UCEC_probability_distribution'
+saveloc = '/home/upload/msi_project/ML/histogram_features/top_9/mss_adjusted_UCEC_probability_distribution.png'
 plt.savefig(saveloc)
 plt.clf()
 
@@ -482,12 +484,13 @@ plt.title('Model-Derrived Probabilities: p(MSI)')
 plt.legend(loc = 'best')
 plt.xlabel = ('p(MSI)')
 plt.ylabel('Number of BAM files')
-saveloc = '/home/upload/msi_project/ML/9_COAD-READ_probability_distribution'
+saveloc = '/home/upload/msi_project/ML/histogram_features/top_9/mss_adjusted_COAD-READ_probability_distribution.png'
 plt.savefig(saveloc)
 plt.clf()
 
 
-
+#for bam in test_bams:
+#	print _FULL_ANNOTATIONS[bam.split('/')[-1].replace('A.bam', '')]
 
 
 
